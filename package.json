@@ -1,0 +1,18 @@
+{
+  "name": "quorly",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "dev:web": "bun run --cwd apps/web dev",
+    "dev:bot": "bun run --cwd apps/bot dev",
+    "db:push": "bun run --cwd packages/core db:push",
+    "db:studio": "bun run --cwd packages/core db:studio",
+    "seed": "bun run --cwd packages/core seed",
+    "typecheck": "tsc -b --pretty"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.7.3"
+  }
+}
