@@ -62,11 +62,11 @@ export function SelfieCheck(props: {
   }
 
   if (state === "done") {
-    return <div className="mt-4 rounded-lg bg-emerald-50 p-4 text-sm text-emerald-900">✓ {message}</div>;
+    return <div className="mt-6 rounded-md bg-forest-soft p-4 text-sm text-forest">✓ {message}</div>;
   }
 
   return (
-    <div className="mt-4 space-y-3">
+    <div className="mt-7 space-y-3">
       {props.demo ? (
         <button
           onClick={() =>
@@ -76,7 +76,7 @@ export function SelfieCheck(props: {
             })
           }
           disabled={state === "verifying"}
-          className="w-full rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-medium text-white disabled:opacity-50"
+          className="w-full rounded-md bg-primary px-4 py-3.5 text-sm font-medium text-primary-foreground transition-opacity duration-200 hover:opacity-90 disabled:opacity-50"
         >
           {state === "verifying" ? "Approving…" : "Simulate Selfie Check (World ID not configured)"}
         </button>
@@ -85,7 +85,7 @@ export function SelfieCheck(props: {
           <button
             onClick={start}
             disabled={state === "preparing" || state === "verifying"}
-            className="w-full rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-medium text-white disabled:opacity-50"
+            className="w-full rounded-md bg-primary px-4 py-3.5 text-sm font-medium text-primary-foreground transition-opacity duration-200 hover:opacity-90 disabled:opacity-50"
           >
             {state === "preparing" ? "Preparing…" : state === "verifying" ? "Verifying…" : "Verify with World ID"}
           </button>
@@ -111,7 +111,7 @@ export function SelfieCheck(props: {
         </>
       )}
 
-      {state === "error" && <p className="rounded-lg bg-rose-50 p-3 text-sm text-rose-900">{message}</p>}
+      {state === "error" && <p className="rounded-md bg-oxblood-soft p-3 text-sm text-oxblood">{message}</p>}
     </div>
   );
 }

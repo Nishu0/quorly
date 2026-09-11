@@ -1,45 +1,63 @@
 import { db, members } from "@quorly/core/db";
+import { PageHeader } from "@/components/quorly/primitives";
 
 export const dynamic = "force-dynamic";
+
+const ROLE_COPY: Record<string, string> = {
+  owner: "Edits policy and quorum membership",
+  approver: "Approves within policy limits",
+  finance: "Executes payouts, cannot approve",
+  member: "Submits invoices",
+};
 
 export default async function TeamPage() {
   const roster = await db.select().from(members).catch(() => []);
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
-        <p className="mt-1 max-w-2xl text-sm opacity-70">
-          Roles decide who can approve. Each approver holds one authorization key in the treasury&apos;s
-          Privy key quorum, and each has an ENSv2 subname under the org&apos;s name so payouts address a
-          human, not a hex string.
-        </p>
-      </header>
+    <div>
+      <PageHeader
+        eyebrow="Organisation"
+        title={
+          <>
+            Who can say
+            <br />
+            <em className="italic">yes</em>.
+          </>
+        }
+        lede="Roles decide who may approve. Each approver holds one authorization key in the treasury's Privy key quorum — so 'two approvals required' isn't a flag in a database, it's the wallet's owner."
+      />
 
-      <div className="overflow-hidden rounded-xl border border-[var(--color-line)]/60">
-        <table className="w-full text-sm">
-          <thead className="bg-black/[0.03] text-left text-xs uppercase tracking-wide opacity-60">
-            <tr>
-              <th className="px-4 py-3 font-medium">Member</th>
-              <th className="px-4 py-3 font-medium">Role</th>
-              <th className="px-4 py-3 font-medium">ENS</th>
-              <th className="px-4 py-3 font-medium">Slack</th>
-            </tr>
-          </thead>
-          <tbody>
-            {roster.map((m) => (
-              <tr key={m.id} className="border-t border-[var(--color-line)]/50">
-                <td className="px-4 py-3">
-                  <div className="font-medium">{m.name ?? m.email}</div>
-                  <div className="text-xs opacity-60">{m.email}</div>
-                </td>
-                <td className="px-4 py-3">{m.role}</td>
-                <td className="px-4 py-3 font-mono text-xs">{m.ensSubname ?? "—"}</td>
-                <td className="px-4 py-3 font-mono text-xs opacity-60">{m.slackUserId ?? "not linked"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="reveal rule">
+        {roster.map((m) => (
+          <div
+            key={m.id}
+            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-5 border-b border-rule py-5"
+          >
+            <span className="display grid size-10 place-items-center rounded-full bg-muted text-base text-ink-soft">
+              {(m.name ?? m.email).charAt(0).toUpperCase()}
+            </span>
+
+            <div className="min-w-0">
+              <p className="truncate font-medium">{m.name ?? m.email}</p>
+              <p className="mt-0.5 truncate text-xs text-ink-faint">
+                {m.ensSubname ? (
+                  <span className="font-mono">{m.ensSubname}</span>
+                ) : (
+                  m.email
+                )}
+                <span className="mx-2 text-rule-strong">·</span>
+                {ROLE_COPY[m.role] ?? m.role}
+              </p>
+            </div>
+
+            <div className="text-right">
+              <p className="label">{m.role}</p>
+              <p className="mt-1 font-mono text-[0.6875rem] text-ink-faint">
+                {m.slackUserId ?? "slack not linked"}
+              </p>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

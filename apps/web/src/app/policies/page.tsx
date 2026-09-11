@@ -1,6 +1,6 @@
 import { asc } from "drizzle-orm";
 import { db, policies } from "@quorly/core/db";
-import { usd } from "@quorly/core";
+import { Amount, PageHeader } from "@/components/quorly/primitives";
 
 export const dynamic = "force-dynamic";
 
@@ -8,35 +8,63 @@ export default async function PoliciesPage() {
   const tiers = await db.select().from(policies).orderBy(asc(policies.maxAmount)).catch(() => []);
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Approval policy</h1>
-        <p className="mt-1 max-w-2xl text-sm opacity-70">
-          Tiers are evaluated cheapest-first. Each one is mirrored into Privy&apos;s policy engine,
-          which enforces the same ceilings and payee allowlist inside a secure enclave — so even a
-          fully compromised Quorly server cannot move money outside these rules.
-        </p>
-      </header>
+    <div>
+      <PageHeader
+        eyebrow="Controls"
+        title={
+          <>
+            Friction, priced to
+            <br />
+            the <em className="italic">risk</em>.
+          </>
+        }
+        lede="Tiers are evaluated cheapest-first. Each is mirrored into Privy's policy engine, which enforces the same ceiling and payee allowlist inside a secure enclave — so even a fully compromised Quorly server cannot move money outside these rules."
+      />
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        {tiers.map((t) => (
-          <div key={t.id} className="rounded-xl border border-[var(--color-line)]/60 p-5">
-            <h2 className="font-medium">{t.name}</h2>
-            <p className="mt-1 font-mono text-xs opacity-60">up to {usd(t.maxAmount)}</p>
-            <ul className="mt-4 space-y-1.5 text-sm">
-              <li>{t.requiredApprovals} approval{t.requiredApprovals > 1 ? "s" : ""} required</li>
-              <li className="opacity-70">from {t.approverRoles.join(", ")}</li>
-              <li className={t.requiredAttestation ? "text-[var(--color-accent)]" : "opacity-50"}>
-                {t.requiredAttestation
-                  ? `live ${t.requiredAttestation.replace("_", " ")} · ${t.attestationMaxAgeSec}s freshness`
-                  : "no biometric check"}
-              </li>
-              <li className="opacity-70">{t.blockSelfApproval ? "self-approval blocked" : "self-approval allowed"}</li>
-            </ul>
+      <div className="reveal grid gap-px overflow-hidden rounded-lg border border-rule bg-rule md:grid-cols-3">
+        {tiers.map((t, i) => (
+          <article
+            key={t.id}
+            className="flex flex-col bg-card p-7"
+            style={{ animationDelay: `${i * 70}ms` }}
+          >
+            <div className="mb-6 flex items-baseline justify-between">
+              <h2 className="display text-2xl">{t.name}</h2>
+              <span className="label">{String(i + 1).padStart(2, "0")}</span>
+            </div>
+
+            <p className="mb-1 text-xs text-ink-faint">up to</p>
+            <Amount value={t.maxAmount} size="lg" className="mb-7" />
+
+            <dl className="mt-auto space-y-3 text-sm">
+              <div className="flex items-baseline justify-between gap-4">
+                <dt className="text-ink-soft">Approvals</dt>
+                <dd className="tnum font-mono">{t.requiredApprovals}</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4">
+                <dt className="text-ink-soft">From</dt>
+                <dd className="text-right">{t.approverRoles.join(", ")}</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4">
+                <dt className="text-ink-soft">Selfie Check</dt>
+                <dd className={t.requiredAttestation ? "text-forest" : "text-ink-faint"}>
+                  {t.requiredAttestation ? `within ${t.attestationMaxAgeSec}s` : "not required"}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4">
+                <dt className="text-ink-soft">Self-approval</dt>
+                <dd className={t.blockSelfApproval ? "text-oxblood" : "text-ink-faint"}>
+                  {t.blockSelfApproval ? "blocked" : "allowed"}
+                </dd>
+              </div>
+            </dl>
+
             {t.privyPolicyId && (
-              <p className="mt-3 truncate font-mono text-[10px] opacity-40">privy: {t.privyPolicyId}</p>
+              <p className="mt-6 truncate border-t border-rule pt-4 font-mono text-[0.6875rem] text-ink-faint">
+                {t.privyPolicyId}
+              </p>
             )}
-          </div>
+          </article>
         ))}
       </div>
     </div>

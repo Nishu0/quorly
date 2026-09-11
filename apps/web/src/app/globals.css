@@ -1,25 +1,195 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-@theme {
-  --color-ink: #0b0d10;
-  --color-paper: #f7f6f3;
-  --color-line: #e2e0da;
-  --color-accent: #1c4ed8;
-  --color-good: #0f7b4f;
-  --color-warn: #a15c00;
-  --color-bad: #a11d1d;
-  --font-sans: ui-sans-serif, -apple-system, "Segoe UI", Inter, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Ledger paper.
+
+  Money software should read like a well-set financial document, not a SaaS
+  dashboard: warm paper, ink-black type, hairline rules instead of boxes, and a
+  single deep accent that means "cleared". Every figure is set in mono with
+  tabular numerals so columns of money align to the digit.
+*/
+:root {
+  --radius: 0.5rem;
+
+  --paper:        #faf7f0;
+  --paper-raised: #fffdf8;
+  --ink:          #151310;
+  --ink-soft:     #6b655a;
+  --ink-faint:    #9a9488;
+  --rule:         #e4ded0;
+  --rule-strong:  #d3ccba;
+
+  --forest:       #1f4b3f;
+  --forest-soft:  #e6ede9;
+  --amber:        #8a5a00;
+  --amber-soft:   #f6eeda;
+  --oxblood:      #7a2a2a;
+  --oxblood-soft: #f6e8e6;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper-raised);
+  --card-foreground: var(--ink);
+  --popover: var(--paper-raised);
+  --popover-foreground: var(--ink);
+  --primary: var(--forest);
+  --primary-foreground: #f6faf7;
+  --secondary: #f0ebe0;
+  --secondary-foreground: var(--ink);
+  --muted: #f2ede2;
+  --muted-foreground: var(--ink-soft);
+  --accent: var(--forest-soft);
+  --accent-foreground: var(--forest);
+  --destructive: var(--oxblood);
+  --border: var(--rule);
+  --input: var(--rule-strong);
+  --ring: var(--forest);
 }
 
-html { color-scheme: light dark; }
+.dark {
+  --paper:        #131211;
+  --paper-raised: #1b1917;
+  --ink:          #f3efe6;
+  --ink-soft:     #9d9689;
+  --ink-faint:    #6d675c;
+  --rule:         #2b2823;
+  --rule-strong:  #3a352d;
 
-body {
-  background: var(--color-paper);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
+  --forest:       #7fb39d;
+  --forest-soft:  #1c2a25;
+  --amber:        #d2a253;
+  --amber-soft:   #2a2318;
+  --oxblood:      #d98a80;
+  --oxblood-soft: #2b1c1a;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper-raised);
+  --card-foreground: var(--ink);
+  --popover: var(--paper-raised);
+  --popover-foreground: var(--ink);
+  --primary: var(--forest);
+  --primary-foreground: #10201a;
+  --secondary: #232019;
+  --secondary-foreground: var(--ink);
+  --muted: #201d19;
+  --muted-foreground: var(--ink-soft);
+  --accent: var(--forest-soft);
+  --accent-foreground: var(--forest);
+  --destructive: var(--oxblood);
+  --border: var(--rule);
+  --input: var(--rule-strong);
+  --ring: var(--forest);
 }
 
-@media (prefers-color-scheme: dark) {
-  body { background: #0b0d10; color: #f2f1ee; }
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-forest: var(--forest);
+  --color-forest-soft: var(--forest-soft);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --color-oxblood: var(--oxblood);
+  --color-oxblood-soft: var(--oxblood-soft);
+
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, Menlo, monospace;
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/40;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "ss01", "cv05";
+  }
+
+  /* Paper grain — barely there, but it stops the ground reading as flat #fff. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Money lines up to the digit, always. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+}
+
+@layer utilities {
+  .display {
+    @apply font-serif font-normal tracking-[-0.02em];
+  }
+
+  .label {
+    @apply text-[0.6875rem] font-medium uppercase tracking-[0.14em] text-ink-faint;
+  }
+
+  .rule {
+    @apply border-t border-rule;
+  }
+
+  /* One orchestrated page-load reveal beats scattered micro-interactions. */
+  .reveal {
+    animation: reveal 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    animation: none;
+  }
 }
