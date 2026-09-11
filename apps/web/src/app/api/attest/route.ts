@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db, invoices } from "@quorly/core/db";
-import { recordAttestation, decide, executePayout } from "@quorly/core";
+import { recordAttestation, decide, executePayout, type IDKitResult } from "@quorly/core";
 
 /**
- * One endpoint does the whole checkpoint: verify the World ID proof server-side,
- * bank it against a UNIQUE (action, nullifier) index so it can't be replayed,
- * then let the policy engine record the approval it now unblocks.
+ * One endpoint does the whole checkpoint: consume the single-use challenge,
+ * verify the World ID proof server-side, then let the policy engine record the
+ * approval it now unblocks. There is no window where a proof is accepted but
+ * the approval isn't.
  */
 export async function POST(req: Request) {
   const body = (await req.json()) as {
     invoiceId: string;
     memberId: string;
-    proof: { proof: string; nullifier_hash: string; merkle_root?: string; verification_level?: string };
+    result: IDKitResult;
   };
 
   const invoice = await db.query.invoices.findFirst({ where: eq(invoices.id, body.invoiceId) });
@@ -22,15 +23,21 @@ export async function POST(req: Request) {
     orgId: invoice.orgId,
     memberId: body.memberId,
     invoiceId: body.invoiceId,
-    proof: body.proof,
+    result: body.result,
   });
 
   if (!att.ok) {
-    const human =
-      att.error === "proof_replayed"
-        ? "That proof was already used. Start a fresh Selfie Check."
-        : `Selfie Check failed (${att.error}).`;
-    return NextResponse.json({ ok: false, error: human }, { status: 400 });
+    const human: Record<string, string> = {
+      proof_replayed: "That proof was already used. Start a fresh Selfie Check.",
+      challenge_spent: "That check was already submitted. Start a fresh one.",
+      challenge_expired: "That check expired. Please verify again.",
+      challenge_mismatch: "That proof belongs to a different approval.",
+      unknown_challenge: "We didn't issue that check. Start again from the approval card.",
+    };
+    return NextResponse.json(
+      { ok: false, error: human[att.error ?? ""] ?? att.error },
+      { status: 400 },
+    );
   }
 
   const outcome = await decide({
@@ -43,9 +50,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: outcome.message }, { status: 400 });
   }
 
-  if (outcome.fullyApproved) {
-    await executePayout(body.invoiceId);
-  }
+  if (outcome.fullyApproved) await executePayout(body.invoiceId);
 
   return NextResponse.json({
     ok: true,

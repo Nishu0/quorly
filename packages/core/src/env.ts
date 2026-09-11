@@ -26,6 +26,8 @@ export const env = {
     rpId: () => opt("WORLD_RP_ID"),
     signingKey: () => opt("WORLD_RP_SIGNING_KEY"),
     base: () => opt("WORLD_API_BASE", "https://developer.world.org"),
+    /** "staging" while testing in Sandbox, "production" for real World App. */
+    environment: () => opt("WORLD_ENVIRONMENT", "staging"),
   },
 
   slack: {

@@ -53,8 +53,7 @@ export default async function VerifyPage({
           invoiceId={invoice.id}
           memberId={approver.id}
           appId={env.world.appId()}
-          action={env.world.action()}
-          demo={!env.world.rpId()}
+          demo={!env.world.rpId() || !env.world.signingKey()}
         />
 
         <p className="mt-4 text-xs opacity-50">

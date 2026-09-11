@@ -3,16 +3,19 @@
  * exactly these functions, so an approval means the same thing wherever it
  * happens.
  */
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, isNull } from "drizzle-orm";
 import { db } from "./db";
 import {
-  approvals, attestations, auditLog, invoices, members, orgs, policies,
+  approvals, attestations, auditLog, invoices, members, orgs, policies, worldChallenges,
   type Invoice, type Member, type Policy,
 } from "./db/schema";
 import { id } from "./ids";
 import { gateApproval, route, type RoutingDecision } from "./policy";
 import { PrivyClient } from "./privy";
-import { approvalSignal, verifySelfieCheck, type WorldProof } from "./worldid";
+import {
+  approvalSignal, CHALLENGE_TTL_SEC, explainVerifyError, verifySelfieCheck,
+  type IDKitResult,
+} from "./worldid";
 import { caip2, toBaseUnits } from "./money";
 import { env } from "./env";
 
@@ -114,18 +117,69 @@ export async function createInvoice(input: NewInvoice): Promise<{ invoice: Invoi
 
 /* ------------------------------------------------ attestation (Selfie Check) */
 
+/**
+ * Mint a single-use challenge bound to one invoice and one approver. The nonce
+ * we return is signed into the rp_context the browser hands to World App, and
+ * must come back inside the proof.
+ */
+export async function createChallenge(input: {
+  invoiceId: string;
+  memberId: string;
+  nonce: string;
+  action: string;
+  expiresAt: Date;
+}): Promise<void> {
+  const invoice = await db.query.invoices.findFirst({ where: eq(invoices.id, input.invoiceId) });
+  if (!invoice) throw new Error("invoice not found");
+
+  await db.insert(worldChallenges).values({
+    nonce: input.nonce,
+    orgId: invoice.orgId,
+    invoiceId: input.invoiceId,
+    memberId: input.memberId,
+    action: input.action,
+    signal: approvalSignal(input.invoiceId, input.memberId),
+    expiresAt: input.expiresAt,
+  });
+}
+
 export async function recordAttestation(input: {
   orgId: string;
   memberId: string;
   invoiceId: string;
-  proof: WorldProof;
+  result: IDKitResult;
   kind?: "selfie_check" | "proof_of_human";
 }): Promise<{ ok: boolean; attestationId?: string; error?: string }> {
   const action = env.world.action();
   const signal = approvalSignal(input.invoiceId, input.memberId);
 
-  const result = await verifySelfieCheck({ proof: input.proof, action, signal });
-  if (!result.ok) return { ok: false, error: result.error ?? "verification_failed" };
+  // 1. The nonce must be one we issued, for this invoice, to this approver.
+  if (!env.demo()) {
+    const challenge = await db.query.worldChallenges.findFirst({
+      where: eq(worldChallenges.nonce, input.result.nonce),
+    });
+
+    if (!challenge) return { ok: false, error: "unknown_challenge" };
+    if (challenge.consumedAt) return { ok: false, error: "challenge_spent" };
+    if (challenge.expiresAt.getTime() < Date.now()) return { ok: false, error: "challenge_expired" };
+    if (challenge.invoiceId !== input.invoiceId || challenge.memberId !== input.memberId) {
+      return { ok: false, error: "challenge_mismatch" };
+    }
+
+    // Burn it before verifying, so a slow verify can't be raced.
+    const burned = await db
+      .update(worldChallenges)
+      .set({ consumedAt: new Date() })
+      .where(and(eq(worldChallenges.nonce, challenge.nonce), isNull(worldChallenges.consumedAt)))
+      .returning();
+    if (burned.length === 0) return { ok: false, error: "challenge_spent" };
+  }
+
+  // 2. Only now ask World to verify the proof itself.
+  const result = await verifySelfieCheck({ result: input.result, action });
+  if (!result.ok) {
+    return { ok: false, error: explainVerifyError(result.error, result.detail) };
+  }
 
   const attestationId = id("att");
   try {
@@ -137,11 +191,11 @@ export async function recordAttestation(input: {
       action,
       signal,
       nullifier: result.nullifier,
-      verificationLevel: result.verificationLevel,
+      verificationLevel: result.environment,
       raw: result.raw,
     });
-  } catch (err) {
-    // UNIQUE (action, nullifier) rejected it: this proof was already spent.
+  } catch {
+    // UNIQUE (signal, nullifier) rejected it: already used for this approval.
     return { ok: false, error: "proof_replayed" };
   }
 
@@ -150,11 +204,13 @@ export async function recordAttestation(input: {
     actorId: input.memberId,
     subject: `invoice:${input.invoiceId}`,
     event: "attestation.verified",
-    data: { kind: input.kind ?? "selfie_check", level: result.verificationLevel },
+    data: { kind: input.kind ?? "selfie_check", environment: result.environment },
   });
 
   return { ok: true, attestationId };
 }
+
+export { CHALLENGE_TTL_SEC };
 
 async function freshAttestation(memberId: string, invoiceId: string, maxAgeSec: number) {
   const since = new Date(Date.now() - maxAgeSec * 1000);

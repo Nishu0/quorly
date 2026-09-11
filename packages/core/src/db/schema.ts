@@ -185,9 +185,36 @@ export const attestations = pgTable(
     expiresAt: timestamp("expires_at"),
   },
   (t) => ({
-    replay: uniqueIndex("attestations_action_nullifier_idx").on(t.action, t.nullifier),
+    // Scoped to the signal (invoice + approver), not just the action: a Selfie
+    // Check nullifier is stable per person, so keying on action alone would
+    // reject the same manager's next legitimate approval as a replay.
+    replay: uniqueIndex("attestations_signal_nullifier_idx").on(t.signal, t.nullifier),
     lookup: index("attestations_member_idx").on(t.memberId, t.kind),
   }),
+);
+
+/**
+ * A server-issued World ID challenge.
+ *
+ * The `rp_context` nonce we sign is what makes this a challenge-response: we
+ * mint one bound to a single invoice and approver, and the proof that comes
+ * back must carry that exact nonce. A proof harvested anywhere else has a
+ * different nonce and is rejected before it ever reaches World's verifier.
+ */
+export const worldChallenges = pgTable(
+  "world_challenges",
+  {
+    nonce: text("nonce").primaryKey(),
+    orgId: text("org_id").notNull().references(() => orgs.id, { onDelete: "cascade" }),
+    invoiceId: text("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+    memberId: text("member_id").notNull().references(() => members.id),
+    action: text("action").notNull(),
+    signal: text("signal").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    consumedAt: timestamp("consumed_at"),
+  },
+  (t) => ({ open: index("world_challenges_target_idx").on(t.invoiceId, t.memberId) }),
 );
 
 /** Immutable audit trail — every state change, who caused it, what proved it. */
@@ -242,3 +269,5 @@ export type Policy = typeof policies.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
 export type Approval = typeof approvals.$inferSelect;
 export type Attestation = typeof attestations.$inferSelect;
+
+export type WorldChallenge = typeof worldChallenges.$inferSelect;

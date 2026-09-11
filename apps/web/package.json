@@ -10,8 +10,9 @@
   },
   "dependencies": {
     "@quorly/core": "workspace:*",
-    "@worldcoin/idkit": "^2.2.2",
-    "drizzle-orm": "^0.38.3",
+    "@worldcoin/idkit": "^4.2.3",
+    "@worldcoin/idkit-server": "^1.1.1",
+    "drizzle-orm": "^0.45.2",
     "next": "^15.1.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
