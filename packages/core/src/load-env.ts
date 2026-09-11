@@ -18,6 +18,25 @@ function findEnvFile(start: string): string | null {
   }
 }
 
+/**
+ * A quoted value ends at its closing quote — anything after it is a trailing
+ * comment, not part of the secret. Getting this wrong silently appends
+ * `" # Socket Mode` to a token and surfaces much later as an auth failure.
+ */
+export function parseValue(raw: string): string {
+  const value = raw.trim();
+  const quote = value[0];
+
+  if (quote === '"' || quote === "'") {
+    const close = value.indexOf(quote, 1);
+    if (close !== -1) return value.slice(1, close);
+    return value.slice(1).trim(); // unterminated quote: salvage the rest
+  }
+
+  const comment = value.search(/\s#/);
+  return (comment === -1 ? value : value.slice(0, comment)).trim();
+}
+
 let loaded = false;
 
 export function loadEnv(from: string = process.cwd()): void {
@@ -37,14 +56,7 @@ export function loadEnv(from: string = process.cwd()): void {
     const key = line.slice(0, eq).trim();
     if (!key || process.env[key] !== undefined) continue;
 
-    let value = line.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    process.env[key] = value;
+    process.env[key] = parseValue(line.slice(eq + 1));
   }
 }
 
