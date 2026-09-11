@@ -1,0 +1,44 @@
+{
+  "display_information": {
+    "name": "Quorly",
+    "description": "Face-verified approvals for company money",
+    "background_color": "#0b0d10"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "Quorly",
+      "always_online": true
+    },
+    "slash_commands": [
+      {
+        "command": "/quorly",
+        "description": "Open invoices, roster, and help",
+        "usage_hint": "pending | team",
+        "should_escape": false
+      }
+    ]
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "chat:write",
+        "commands",
+        "files:read",
+        "im:history",
+        "im:write",
+        "users:read"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "bot_events": ["message.im"]
+    },
+    "interactivity": {
+      "is_enabled": true
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": true,
+    "token_rotation_enabled": false
+  }
+}

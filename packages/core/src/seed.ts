@@ -23,6 +23,8 @@ const people = [
 ];
 
 for (const p of people) {
+  const slackUserId = process.env[`SEED_SLACK_${p.key.toUpperCase()}`] ?? null;
+
   await db.insert(members).values({
     id: `mem_demo_${p.key}`,
     orgId,
@@ -30,9 +32,16 @@ for (const p of people) {
     name: p.name,
     role: p.role,
     ensSubname: p.ens,
-    slackUserId: process.env[`SEED_SLACK_${p.key.toUpperCase()}`] ?? null,
+    slackUserId,
     walletAddress: null,
-  }).onConflictDoNothing();
+  }).onConflictDoUpdate({
+    // Re-running the seed is how you link Slack accounts, so this has to
+    // update rather than skip — but only when an id was actually supplied.
+    target: members.id,
+    set: slackUserId ? { slackUserId } : { name: p.name },
+  });
+
+  if (slackUserId) console.log(`  linked ${p.name} -> ${slackUserId}`);
 }
 
 for (const tier of DEFAULT_POLICY_TIERS) {
