@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { approvalSignal, explainVerifyError, verifySelfieCheck, SELFIE_CHECK_TTL_MS } from "../src/worldid";
 
 describe("approvalSignal", () => {
@@ -17,6 +17,18 @@ describe("approvalSignal", () => {
 
 describe("verifySelfieCheck (demo mode)", () => {
   const result = (nonce: string) => ({ protocol_version: "3.0", nonce, responses: [] });
+
+  // Pin the environment: once real World credentials land in .env this suite
+  // would otherwise start making live network calls and fail.
+  const saved = { rpId: process.env.WORLD_RP_ID, demo: process.env.DEMO_MODE };
+  beforeAll(() => {
+    process.env.WORLD_RP_ID = "";
+    process.env.DEMO_MODE = "1";
+  });
+  afterAll(() => {
+    process.env.WORLD_RP_ID = saved.rpId;
+    process.env.DEMO_MODE = saved.demo;
+  });
 
   test("passes through without a relying-party key so the flow is demoable", async () => {
     const r = await verifySelfieCheck({ result: result("n_1"), action: "approve-payout" });

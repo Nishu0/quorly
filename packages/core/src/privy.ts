@@ -250,7 +250,8 @@ export interface PrivyPolicyCondition {
   field: string;
   operator: "eq" | "neq" | "lt" | "lte" | "gt" | "gte" | "in" | "not_in";
   value: string | string[] | number;
-  abi?: unknown;
+  /** Required whenever field_source is ethereum_calldata. */
+  abi?: readonly unknown[];
 }
 
 export interface PrivyPolicyRule {
@@ -260,36 +261,66 @@ export interface PrivyPolicyRule {
   action: "ALLOW" | "DENY";
 }
 
+/** The ERC-20 `transfer` fragment. Privy needs it inline on every calldata condition. */
+export const ERC20_TRANSFER_ABI = [
+  {
+    inputs: [
+      { internalType: "address", name: "recipient", type: "address" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
+    ],
+    name: "transfer",
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const;
+
 /**
  * Translate an org policy into Privy policy rules: only USDC, only to
- * allowlisted payees, never above the tier ceiling. Enforced inside the TEE,
- * so a compromised Quorly server still cannot drain the treasury.
+ * allowlisted payees, never above the ceiling.
+ *
+ * All three conditions live in ONE rule because Privy ANDs conditions within a
+ * rule and ORs across rules — as separate rules these would each independently
+ * permit a transfer, which is the opposite of what a treasury control means.
+ *
+ * Enforced inside the TEE, so a compromised Quorly server still cannot drain
+ * the treasury.
  */
 export function buildTreasuryPolicyRules(input: {
   usdcAddress: string;
   allowedRecipients: string[];
+  maxAmountBaseUnits?: bigint;
 }): PrivyPolicyRule[] {
-  return [
+  const conditions: PrivyPolicyCondition[] = [
     {
-      name: "USDC contract only",
-      method: "eth_sendTransaction",
-      conditions: [
-        { field_source: "ethereum_transaction", field: "to", operator: "eq", value: input.usdcAddress },
-      ],
-      action: "ALLOW",
-    },
-    {
-      name: "Allowlisted payees only",
-      method: "eth_sendTransaction",
-      conditions: [
-        {
-          field_source: "ethereum_calldata",
-          field: "transfer.recipient",
-          operator: "in",
-          value: input.allowedRecipients,
-        },
-      ],
-      action: "ALLOW",
+      field_source: "ethereum_transaction",
+      field: "to",
+      operator: "eq",
+      value: input.usdcAddress,
     },
   ];
+
+  if (input.maxAmountBaseUnits !== undefined) {
+    conditions.push({
+      field_source: "ethereum_calldata",
+      field: "transfer.amount",
+      abi: ERC20_TRANSFER_ABI,
+      operator: "lte",
+      value: `0x${input.maxAmountBaseUnits.toString(16)}`,
+    });
+  }
+
+  // An empty `in` list would deny everything, so only constrain payees once we
+  // actually have some. The USDC + ceiling conditions still apply either way.
+  if (input.allowedRecipients.length > 0) {
+    conditions.push({
+      field_source: "ethereum_calldata",
+      field: "transfer.recipient",
+      abi: ERC20_TRANSFER_ABI,
+      operator: "in",
+      value: input.allowedRecipients,
+    });
+  }
+
+  return [{ name: "USDC to allowlisted payees", method: "eth_sendTransaction", conditions, action: "ALLOW" }];
 }

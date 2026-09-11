@@ -84,17 +84,42 @@ describe("buildTreasuryPolicyRules", () => {
   const rules = buildTreasuryPolicyRules({
     usdcAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     allowedRecipients: ["0xpriya"],
+    maxAmountBaseUnits: 25_000_000_000n,
+  });
+
+  test("emits a single rule, so the conditions AND together", () => {
+    // As separate rules each would independently permit a transfer — the
+    // opposite of a treasury control.
+    expect(rules).toHaveLength(1);
+    expect(rules[0]!.action).toBe("ALLOW");
   });
 
   test("pins the destination contract to USDC", () => {
-    const r = rules.find((x) => x.name.includes("USDC"))!;
-    expect(r.conditions[0]!.value).toBe("0x036CbD53842c5426634e7929541eC2318f3dCF7e");
-    expect(r.action).toBe("ALLOW");
+    const c = rules[0]!.conditions.find((x) => x.field === "to")!;
+    expect(c.value).toBe("0x036CbD53842c5426634e7929541eC2318f3dCF7e");
   });
 
-  test("restricts transfer recipients to the allowlist", () => {
-    const r = rules.find((x) => x.name.includes("Allowlisted"))!;
-    expect(r.conditions[0]!.field).toBe("transfer.recipient");
-    expect(r.conditions[0]!.value).toEqual(["0xpriya"]);
+  test("caps the transfer amount as hex base units", () => {
+    const c = rules[0]!.conditions.find((x) => x.field === "transfer.amount")!;
+    expect(c.operator).toBe("lte");
+    expect(BigInt(c.value as string)).toBe(25_000_000_000n);
+  });
+
+  test("restricts recipients to the allowlist", () => {
+    const c = rules[0]!.conditions.find((x) => x.field === "transfer.recipient")!;
+    expect(c.value).toEqual(["0xpriya"]);
+  });
+
+  test("every calldata condition carries the ABI Privy requires", () => {
+    for (const c of rules[0]!.conditions) {
+      if (c.field_source === "ethereum_calldata") expect(c.abi).toBeDefined();
+    }
+  });
+
+  test("omits the payee condition when the allowlist is empty", () => {
+    // `in []` would deny every transfer, including legitimate ones.
+    const r = buildTreasuryPolicyRules({ usdcAddress: "0xusdc", allowedRecipients: [] });
+    expect(r[0]!.conditions.some((c) => c.field === "transfer.recipient")).toBe(false);
+    expect(r[0]!.conditions.some((c) => c.field === "to")).toBe(true);
   });
 });
