@@ -1,3 +1,4 @@
+import "./src/load-env";
 import type { Config } from "drizzle-kit";
 
 export default {
