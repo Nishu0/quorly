@@ -40,6 +40,22 @@ export interface PrivyIntent {
 /* --------------------------------------------------- authorization signing */
 
 /**
+ * Deterministic JSON: keys sorted at every level, `undefined` dropped.
+ *
+ * This must be byte-identical to what the enclave reconstructs, so it cannot use
+ * `JSON.stringify(value, keyArray)` — an array replacer is a recursive property
+ * *allowlist*, which silently strips nested fields like a transfer's amount and
+ * recipient from the signed payload.
+ */
+export function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  const obj = value as Record<string, unknown>;
+  const keys = Object.keys(obj).filter((k) => obj[k] !== undefined).sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalJson(obj[k])}`).join(",")}}`;
+}
+
+/**
  * Privy verifies an ECDSA P-256 signature over a canonical serialization of the
  * request. Without it, the enclave refuses any action on an owned wallet.
  */
@@ -61,7 +77,7 @@ export function authorizationSignature(input: {
     body: input.body,
     headers: { "privy-app-id": input.appId },
   };
-  const serialized = JSON.stringify(payload, Object.keys(payload).sort());
+  const serialized = canonicalJson(payload);
   const signer = createSign("SHA256");
   signer.update(serialized);
   signer.end();
