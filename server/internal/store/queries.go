@@ -118,10 +118,29 @@ func (s *Store) UpsertMember(ctx context.Context, tx pgx.Tx, m domain.Member) er
 
 // ClaimMemberSeat links a verified Privy identity to the row invited for that
 // email — but only if nobody holds it yet, so a seat can't be stolen.
+//
+// One address can sit on several rosters (members is unique per org+email), but
+// members_privy_idx is unique on privy_user_id across every org, so exactly one
+// of those seats can be claimed. Picking one row explicitly is what keeps that
+// legal: an unscoped UPDATE matches every roster the address appears on and
+// tries to write the same DID to all of them, which trips the index and locks
+// the person out of signing in at all. Their most privileged seat wins, oldest
+// breaking the tie, and FOR UPDATE keeps two concurrent sign-ins off one row.
 func (s *Store) ClaimMemberSeat(ctx context.Context, email, privyUserID string, walletAddress *string) (domain.Member, error) {
 	return scanMember(s.pool.QueryRow(ctx, `
-		UPDATE members SET privy_user_id=$2, wallet_address=COALESCE($3, wallet_address)
-		WHERE lower(email)=lower($1) AND privy_user_id IS NULL
+		WITH seat AS (
+			SELECT id AS seat_id FROM members
+			WHERE lower(email)=lower($1) AND privy_user_id IS NULL
+			ORDER BY CASE role
+				WHEN 'owner' THEN 0
+				WHEN 'approver' THEN 1
+				ELSE 2
+			END, created_at, id
+			LIMIT 1
+			FOR UPDATE
+		)
+		UPDATE members m SET privy_user_id=$2, wallet_address=COALESCE($3, m.wallet_address)
+		FROM seat WHERE m.id = seat.seat_id
 		RETURNING `+memberCols, email, privyUserID, walletAddress))
 }
 
