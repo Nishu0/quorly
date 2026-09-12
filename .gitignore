@@ -9,3 +9,7 @@ bun.lock
 contracts/out
 contracts/cache
 contracts/broadcast
+
+# Never commit the deploy key
+quorly.pem
+*.pem
