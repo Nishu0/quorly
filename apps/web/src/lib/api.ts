@@ -69,6 +69,8 @@ export interface Member {
   ensSubname: string | null;
   walletAddress: string | null;
   slackUserId: string | null;
+  pending?: boolean;
+  createdAt?: string;
 }
 
 export interface Invoice {
@@ -107,6 +109,9 @@ export interface Policy {
   AttestationMaxAgeSec: number;
   BlockSelfApproval: boolean;
   PrivyPolicyID: string | null;
+  CreatedAt: string;
+  UpdatedAt: string;
+  UpdatedBy: string | null;
 }
 
 export interface Approval {

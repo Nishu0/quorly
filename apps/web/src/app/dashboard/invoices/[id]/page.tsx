@@ -40,10 +40,10 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   return (
     <div>
       <Link
-        href="/"
+        href="/dashboard/invoices"
         className="mb-10 inline-block text-sm text-ink-soft transition-colors hover:text-foreground"
       >
-        ← Ledger
+        ← Invoices
       </Link>
 
       <PageHeader

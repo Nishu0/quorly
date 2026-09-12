@@ -1,7 +1,7 @@
 import { formatUnits } from "viem";
 import { apiOrNull } from "@/lib/api";
 import { shortAddress } from "@/lib/format";
-import { PageHeader, Field, Amount } from "@/components/quorly/primitives";
+import { Field, Amount } from "@/components/quorly/primitives";
 import { QUSD_ABI, publicClient, qusdAddress } from "@/lib/qusd";
 import { FaucetForm } from "./faucet-form";
 
@@ -34,17 +34,14 @@ export default async function FaucetPage() {
 
   return (
     <div>
-      <PageHeader
-        eyebrow="Test currency"
-        title={
-          <>
-            Quorly USD,
-            <br />
-            on <em className="italic">tap</em>.
-          </>
-        }
-        lede="Circle's Base Sepolia faucet caps out at 20 USDC, which isn't enough to demo a $20,000 approval. QUSD mirrors USDC's interface and 6-decimal precision, so nothing in the app treats it differently — it just isn't scarce."
-      />
+      <div>
+        <h2 className="text-lg font-medium">Quorly USD</h2>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+          Circle&apos;s Base Sepolia faucet caps out at 20 USDC, which isn&apos;t enough to demo a
+          $20,000 approval. QUSD mirrors USDC&apos;s interface and 6-decimal precision, so nothing
+          in the app treats it differently — it just isn&apos;t scarce.
+        </p>
+      </div>
 
       <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <section className="reveal">
