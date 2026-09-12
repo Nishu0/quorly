@@ -1,0 +1,3 @@
+# Quorly is an internal finance tool, not something to index.
+User-agent: *
+Disallow: /
