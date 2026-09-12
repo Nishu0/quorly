@@ -16,12 +16,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Nishu0/quorly/server/internal/ai"
 	"github.com/Nishu0/quorly/server/internal/api"
 	"github.com/Nishu0/quorly/server/internal/auth"
 	"github.com/Nishu0/quorly/server/internal/config"
+	"github.com/Nishu0/quorly/server/internal/domain"
 	"github.com/Nishu0/quorly/server/internal/privy"
 	"github.com/Nishu0/quorly/server/internal/queue"
 	"github.com/Nishu0/quorly/server/internal/service"
+	"github.com/Nishu0/quorly/server/internal/slackapp"
 	"github.com/Nishu0/quorly/server/internal/store"
 	"github.com/Nishu0/quorly/server/internal/worker"
 	"github.com/Nishu0/quorly/server/internal/worldid"
@@ -83,11 +86,27 @@ func run(log *slog.Logger, migrateOnly bool) error {
 		return err
 	}
 
+	slackApp := &slackapp.App{
+		DB: db, Svc: svc, Log: log,
+		AI:            ai.New(os.Getenv("ANTHROPIC_API_KEY"), os.Getenv("ANTHROPIC_MODEL")),
+		AppURL:        cfg.AppURL,
+		Explorer:      "https://sepolia.basescan.org",
+		SigningSecret: cfg.Slack.SigningSecret,
+		DevBotToken:   cfg.Slack.BotToken,
+	}
+
 	host, _ := os.Hostname()
 	pool := worker.NewPool(q, log, host+"-"+time.Now().Format("150405"))
 	(&service.Payouts{
 		Service: svc, Privy: privyClient, Log: log,
 		ChainID: cfg.Chain.ID, Asset: "qusd", Demo: cfg.Demo(),
+		// Telling people is part of settling, but a Slack outage must not fail
+		// a payout that already landed onchain.
+		OnPaid: func(ctx context.Context, inv domain.Invoice) {
+			if err := slackApp.NotifyPaid(ctx, inv); err != nil {
+				log.Warn("could not announce payment", "err", err, "invoice", inv.ID)
+			}
+		},
 	}).Register(pool)
 	go pool.Run(ctx)
 
@@ -96,6 +115,7 @@ func run(log *slog.Logger, migrateOnly bool) error {
 		Handler: (&api.Server{
 			Cfg: cfg, DB: db, Svc: svc, Privy: privyClient,
 			Queue: q, Verifier: verifier, Signer: signer, Log: log,
+			Slack: slackApp,
 		}).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       60 * time.Second,

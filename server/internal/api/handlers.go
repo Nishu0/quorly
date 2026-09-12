@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -190,6 +191,16 @@ func (s *Server) createInvoice(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
+	// Chase the approvers, but don't fail the request if Slack is down — the
+	// invoice is filed either way, and the dashboard still shows it.
+	if s.Slack != nil {
+		go func() {
+			if err := s.Slack.FanOut(context.WithoutCancel(r.Context()), inv, decision); err != nil {
+				s.Log.Warn("could not notify approvers", "err", err, "invoice", inv.ID)
+			}
+		}()
+	}
+
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"invoice": invoiceView(inv), "routing": routingView(decision),
 	})

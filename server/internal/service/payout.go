@@ -26,6 +26,17 @@ type Payouts struct {
 	ChainID int
 	Asset   string
 	Demo    bool
+
+	// OnPaid announces a settled invoice. Optional, and deliberately
+	// best-effort: a Slack outage must not fail a payout that already landed.
+	OnPaid func(ctx context.Context, inv domain.Invoice)
+}
+
+func (p *Payouts) announce(ctx context.Context, inv domain.Invoice) {
+	if p.OnPaid == nil {
+		return
+	}
+	p.OnPaid(ctx, inv)
 }
 
 type payoutPayload struct {
@@ -83,6 +94,8 @@ func (p *Payouts) handlePayout(ctx context.Context, j queue.Job) error {
 		if err := p.Service.DB.MarkInvoicePaid(ctx, inv.ID, hash); err != nil {
 			return err
 		}
+		inv.TxHash = &hash
+		p.announce(ctx, inv)
 		return p.audit(ctx, inv, "invoice.paid", map[string]any{"demo": true, "txHash": hash})
 	}
 
@@ -162,6 +175,8 @@ func (p *Payouts) handleSettleWatch(ctx context.Context, j queue.Job) error {
 			return err
 		}
 		p.Log.Info("invoice settled", "invoice", inv.ID, "tx", hash)
+		inv.TxHash = &hash
+		p.announce(ctx, inv)
 		return p.audit(ctx, inv, "invoice.paid", map[string]any{"txHash": hash})
 	}
 

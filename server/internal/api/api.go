@@ -14,6 +14,7 @@ import (
 	"github.com/Nishu0/quorly/server/internal/privy"
 	"github.com/Nishu0/quorly/server/internal/queue"
 	"github.com/Nishu0/quorly/server/internal/service"
+	"github.com/Nishu0/quorly/server/internal/slackapp"
 	"github.com/Nishu0/quorly/server/internal/store"
 	"github.com/Nishu0/quorly/server/internal/worldid"
 )
@@ -26,6 +27,7 @@ type Server struct {
 	Queue    *queue.Queue
 	Verifier *auth.Verifier
 	Signer   *worldid.Signer
+	Slack    *slackapp.App
 	Log      *slog.Logger
 }
 
@@ -49,6 +51,9 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("GET /slack/install", s.slackInstall)
 	mux.HandleFunc("GET /slack/oauth/callback", s.slackCallback)
+	if s.Slack != nil {
+		s.Slack.Routes(mux)
+	}
 
 	var h http.Handler = mux
 	h = auth.Middleware(s.Verifier, s.DB)(h)
