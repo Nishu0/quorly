@@ -356,6 +356,10 @@ func (s *Server) attest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := s.Svc.RecordAttestation(r.Context(), inv.ID, m.ID, inv.OrgID, body.Result); err != nil {
+		// IDKit collapses whatever we return into "Verification declined", so
+		// without this line the actual reason exists nowhere anybody can read.
+		s.Log.Warn("attestation rejected", "err", err,
+			"invoice", inv.ID, "member", m.ID, "nonce", body.Result.Nonce)
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}

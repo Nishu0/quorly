@@ -2,7 +2,7 @@ import { apiOrNull, type Invoice, type Member, type Routing } from "@/lib/api";
 import { shortAddress } from "@/lib/format";
 import { Amount, Field } from "@/components/quorly/primitives";
 import { SignInButton } from "@/components/quorly/auth";
-import { SelfieCheck } from "./selfie-check";
+import { SelfieCheck } from "@/components/quorly/selfie-check";
 
 export const dynamic = "force-dynamic";
 

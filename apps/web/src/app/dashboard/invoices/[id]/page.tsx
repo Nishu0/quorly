@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { apiOrNull, type Approval, type AuditEntry, type Invoice, type Member, type Routing } from "@/lib/api";
 import { shortAddress } from "@/lib/format";
 import { Amount, Field, PageHeader, StatusPill } from "@/components/quorly/primitives";
+import { SelfieCheck } from "@/components/quorly/selfie-check";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ interface Detail {
   routing: Routing;
   approvals: Approval[] | null;
   audit: AuditEntry[] | null;
+  worldConfigured: boolean;
 }
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
@@ -65,20 +67,20 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         aside={<StatusPill status={invoice.status} />}
       />
 
-      {awaiting && eligible && !alreadyDecided && (
-        <div className="reveal mb-12 flex flex-wrap items-center gap-4">
-          <Link
-            href={`/verify/${invoice.id}`}
-            className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-          >
-            {needsSelfie ? "Approve with Selfie Check" : "Approve"}
-          </Link>
-          {needsSelfie && (
-            <p className="text-xs text-ink-faint">
-              This tier needs proof a live human is behind the click, so the decision happens on
-              the verification page.
-            </p>
-          )}
+      {awaiting && eligible && !alreadyDecided && me && (
+        <div className="reveal mb-12 max-w-md rounded-lg border border-rule bg-card p-6">
+          <h2 className="label mb-2">Your decision</h2>
+          <p className="text-sm leading-relaxed text-ink-soft">
+            {needsSelfie
+              ? "This tier needs proof a live human is behind the click, not a stolen session. The check takes about ten seconds and the proof is bound to this invoice alone."
+              : "Approving releases the payout to the payee below."}
+          </p>
+          <SelfieCheck
+            invoiceId={invoice.id}
+            memberId={me.id}
+            appId={process.env.NEXT_PUBLIC_WORLD_APP_ID ?? ""}
+            demo={!detail.worldConfigured}
+          />
         </div>
       )}
 

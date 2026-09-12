@@ -147,6 +147,12 @@ func Explain(code, detail string) string {
 		return "This app isn't on World ID 4.0 yet — check the Developer Portal."
 	case "user_presence_failed":
 		return "Liveness check failed. Make sure it's you in front of the camera."
+	case "failed_by_host_app":
+		// World App itself refused the request rather than producing a bad
+		// proof — in practice the credential isn't available to that account:
+		// Selfie Check not enabled for this app, or the wallet isn't enrolled.
+		return "World App couldn't run the Selfie Check. The account needs to be " +
+			"enrolled in Selfie Check, and the app needs it enabled in the Developer Portal."
 	}
 	if detail != "" {
 		return detail
