@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lestrrat-go/httprc/v3"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jwt"
 
@@ -35,7 +36,8 @@ type Verifier struct {
 func NewVerifier(ctx context.Context, appID string) (*Verifier, error) {
 	url := "https://auth.privy.io/api/v1/apps/" + appID + "/jwks.json"
 
-	cache, err := jwk.NewCache(ctx, nil)
+	// The client must be unstarted: jwk.Cache starts it and owns its lifetime.
+	cache, err := jwk.NewCache(ctx, httprc.NewClient())
 	if err != nil {
 		return nil, err
 	}

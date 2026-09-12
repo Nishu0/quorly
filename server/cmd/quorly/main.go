@@ -1,16 +1,30 @@
-// Command quorly runs the API server and the payout worker pool.
+// Command quorly runs the API server and the payout worker pool in one process.
+//
+// One binary on purpose: the queue is in Postgres, so a separate worker
+// deployment buys nothing at this scale and costs an extra thing to operate.
+// Splitting them later is a flag, not a rewrite.
 package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/Nishu0/quorly/server/internal/api"
+	"github.com/Nishu0/quorly/server/internal/auth"
 	"github.com/Nishu0/quorly/server/internal/config"
+	"github.com/Nishu0/quorly/server/internal/privy"
+	"github.com/Nishu0/quorly/server/internal/queue"
+	"github.com/Nishu0/quorly/server/internal/service"
 	"github.com/Nishu0/quorly/server/internal/store"
+	"github.com/Nishu0/quorly/server/internal/worker"
+	"github.com/Nishu0/quorly/server/internal/worldid"
 )
 
 func main() {
@@ -19,35 +33,87 @@ func main() {
 
 	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-	cfg, err := config.Load()
-	if err != nil {
-		log.Error("config", "err", err)
+	if err := run(log, *migrateOnly); err != nil {
+		log.Error("fatal", "err", err)
 		os.Exit(1)
 	}
+}
 
-	// Shut down on the first signal; a second one kills immediately, so an
-	// operator is never stuck waiting on a draining worker.
+func run(log *slog.Logger, migrateOnly bool) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+
+	// The first signal drains; a second kills, so an operator is never stuck
+	// waiting on a slow job.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	db, err := store.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
-		log.Error("database", "err", err)
-		os.Exit(1)
+		return err
 	}
 	defer db.Close()
 
 	if err := db.Migrate(ctx); err != nil {
-		log.Error("migrate", "err", err)
-		os.Exit(1)
+		return err
 	}
 	log.Info("migrations applied")
-
-	if *migrateOnly {
-		return
+	if migrateOnly {
+		return nil
 	}
 
-	log.Info("quorly server ready", "addr", cfg.Addr, "demo", cfg.Demo())
+	q := queue.New(db.Pool())
+	privyClient := privy.New(cfg.Privy.AppID, cfg.Privy.AppSecret, cfg.Privy.BaseURL, cfg.Privy.AuthKeys)
+	world := worldid.New(cfg.World.BaseURL, cfg.World.RPID, cfg.World.Environment, cfg.Demo())
+
+	svc := &service.Service{DB: db, World: world, Queue: q, WorldAction: cfg.World.Action}
+
+	// Signing is optional: without it the app still runs, the Selfie Check
+	// checkpoint just falls back to demo mode instead of failing to boot.
+	signer, err := worldid.NewSigner(cfg.World.SigningKey, cfg.World.RPID)
+	if err != nil {
+		log.Warn("world signing disabled", "reason", err)
+		signer = nil
+	}
+
+	verifier, err := auth.NewVerifier(ctx, cfg.Privy.AppID)
+	if err != nil {
+		return err
+	}
+
+	host, _ := os.Hostname()
+	pool := worker.NewPool(q, log, host+"-"+time.Now().Format("150405"))
+	(&service.Payouts{
+		Service: svc, Privy: privyClient, Log: log,
+		ChainID: cfg.Chain.ID, Asset: "qusd", Demo: cfg.Demo(),
+	}).Register(pool)
+	go pool.Run(ctx)
+
+	srv := &http.Server{
+		Addr: cfg.Addr,
+		Handler: (&api.Server{
+			Cfg: cfg, DB: db, Svc: svc, Privy: privyClient,
+			Queue: q, Verifier: verifier, Signer: signer, Log: log,
+		}).Handler(),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	go func() {
+		log.Info("listening", "addr", cfg.Addr, "demo", cfg.Demo(), "world_signing", signer != nil)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Error("http server", "err", err)
+			stop()
+		}
+	}()
+
 	<-ctx.Done()
-	log.Info("shutting down")
+	log.Info("draining")
+
+	// Give in-flight requests a moment; the worker pool drains on its own ctx.
+	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Second)
+	defer cancel()
+	return srv.Shutdown(shutdownCtx)
 }
