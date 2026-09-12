@@ -24,9 +24,10 @@ interface Detail {
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [detail, roster] = await Promise.all([
+  const [detail, roster, me] = await Promise.all([
     apiOrNull<Detail>(`/api/invoices/${id}`),
     apiOrNull<{ members: Member[] }>("/api/members"),
+    apiOrNull<Member>("/api/me"),
   ]);
 
   if (!detail) notFound();
@@ -36,6 +37,17 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const audit = detail.audit ?? [];
   const nameOf = (mid: string | null) =>
     (roster?.members ?? []).find((m) => m.id === mid)?.name ?? mid ?? "system";
+
+  // The decision itself lives on /verify — that page is where the Selfie Check
+  // runs. Without a way through to it this screen states "awaiting approval"
+  // and then offers the approver nothing to press.
+  const awaiting = invoice.status === "pending_approval";
+  const eligible = routing.eligibleApprovers.some((a) => a.id === me?.id);
+  const alreadyDecided = approvals.some((a) => a.ApproverID === me?.id);
+  const needsSelfie = routing.requiredAttestation !== null;
+  // The API does not return a submitter on the invoice, but the audit trail
+  // records who filed it, which is the same fact.
+  const filedByMe = audit.some((e) => e.event === "invoice.submitted" && e.actorId === me?.id);
 
   return (
     <div>
@@ -52,6 +64,37 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         lede={invoice.description ?? undefined}
         aside={<StatusPill status={invoice.status} />}
       />
+
+      {awaiting && eligible && !alreadyDecided && (
+        <div className="reveal mb-12 flex flex-wrap items-center gap-4">
+          <Link
+            href={`/verify/${invoice.id}`}
+            className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            {needsSelfie ? "Approve with Selfie Check" : "Approve"}
+          </Link>
+          {needsSelfie && (
+            <p className="text-xs text-ink-faint">
+              This tier needs proof a live human is behind the click, so the decision happens on
+              the verification page.
+            </p>
+          )}
+        </div>
+      )}
+
+      {awaiting && !eligible && (
+        <p className="reveal mb-12 text-xs text-ink-faint">
+          {filedByMe
+            ? "You filed this one. Every tier blocks self-approval, so somebody else has to decide it."
+            : `You aren't an approver on the ${routing.policy} tier for this invoice.`}
+        </p>
+      )}
+
+      {awaiting && eligible && alreadyDecided && (
+        <p className="reveal mb-12 text-xs text-ink-faint">
+          You've already decided this one; it's waiting on the rest of the quorum.
+        </p>
+      )}
 
       <div className="grid gap-14 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-14">
