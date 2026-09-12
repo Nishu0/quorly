@@ -85,6 +85,18 @@ const TONES = {
   neutral: "bg-muted text-ink-soft",
 } as const;
 
+/** The accent stripe on a ledger row — lets the eye sort by state at a glance. */
+export function StatusAccent({ status }: { status: string }) {
+  const s = STATUS[status as keyof typeof STATUS] ?? { tone: "neutral" as const };
+  const bar = {
+    forest: "bg-forest",
+    amber: "bg-amber",
+    oxblood: "bg-oxblood",
+    neutral: "bg-rule-strong",
+  }[s.tone];
+  return <span aria-hidden className={cn("h-8 w-[3px] shrink-0 rounded-full", bar)} />;
+}
+
 export function StatusPill({ status, className }: { status: string; className?: string }) {
   const s = STATUS[status as keyof typeof STATUS] ?? { label: status, tone: "neutral" as const };
   return (

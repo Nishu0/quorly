@@ -1,37 +1,15 @@
 import Link from "next/link";
 import { api, apiOrNull, type Invoice, type Member } from "@/lib/api";
 import { shortAddress } from "@/lib/format";
-import { Amount, Empty, PageHeader, StatusPill, Stat } from "@/components/quorly/primitives";
-import { SignInButton } from "@/components/quorly/auth";
+import { Amount, Empty, PageHeader, StatusAccent, StatusPill, Stat } from "@/components/quorly/primitives";
+import { Landing } from "@/components/quorly/landing";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const me = await apiOrNull<Member>("/api/me");
 
-  if (!me) {
-    return (
-      <div className="reveal mx-auto max-w-lg py-16 text-center">
-        <h1 className="display text-[3rem] leading-[1.05]">
-          Money moves when a<br />
-          <em className="italic">live human</em> says so.
-        </h1>
-        <p className="mx-auto mt-6 max-w-md text-[0.9375rem] leading-relaxed text-ink-soft">
-          Slack-native invoice approvals. Above a threshold, the approver passes a live World ID
-          Selfie Check before the payout leaves a treasury wallet governed by a key quorum.
-        </p>
-        <div className="mx-auto mt-10 max-w-xs">
-          <SignInButton full />
-        </div>
-        <p className="mt-8 text-xs text-ink-faint">
-          No workspace yet?{" "}
-          <a href="/slack/install" className="underline underline-offset-2">
-            Add Quorly to Slack
-          </a>
-        </p>
-      </div>
-    );
-  }
+  if (!me) return <Landing />;
 
   const { invoices } = await api<{ invoices: Invoice[] }>("/api/invoices");
   const list = invoices ?? [];
@@ -80,10 +58,12 @@ export default async function Home() {
               <Link
                 key={invoice.id}
                 href={`/invoices/${invoice.id}`}
-                className="group grid grid-cols-[1fr_auto] items-center gap-6 border-b border-rule py-5 transition-colors duration-200 hover:bg-muted/50 sm:grid-cols-[minmax(0,1fr)_10rem_9rem]"
+                className="group grid grid-cols-[auto_1fr_auto] items-center gap-5 border-b border-rule py-4 pl-1 pr-2 transition-colors duration-200 hover:bg-muted/40 sm:grid-cols-[auto_minmax(0,1fr)_10rem_9rem]"
               >
+                <StatusAccent status={invoice.status} />
+
                 <div className="min-w-0">
-                  <p className="truncate font-medium">
+                  <p className="truncate font-medium transition-colors group-hover:text-forest">
                     {invoice.description ?? invoice.number ?? invoice.id}
                   </p>
                   <p className="mt-1 truncate font-mono text-xs text-ink-faint">
