@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 interface Detail {
   invoice: Invoice;
   routing: Routing;
+  worldConfigured: boolean;
 }
 
 export default async function VerifyPage({ params }: { params: Promise<{ invoiceId: string }> }) {
@@ -83,7 +84,7 @@ export default async function VerifyPage({ params }: { params: Promise<{ invoice
           invoiceId={invoice.id}
           memberId={me.id}
           appId={process.env.NEXT_PUBLIC_WORLD_APP_ID ?? ""}
-          demo={routing.requiredAttestation === null}
+          demo={!detail.worldConfigured}
         />
       </section>
 

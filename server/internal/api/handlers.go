@@ -146,10 +146,11 @@ func (s *Server) getInvoice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"invoice":   invoiceView(inv),
-		"routing":   routingView(decision),
-		"approvals": approvals,
-		"audit":     trail,
+		"invoice":         invoiceView(inv),
+		"routing":         routingView(decision),
+		"approvals":       approvals,
+		"audit":           trail,
+		"worldConfigured": s.Signer != nil,
 	})
 }
 
