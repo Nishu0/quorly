@@ -15,7 +15,12 @@ export const env = {
   privy: {
     appId: () => req("PRIVY_APP_ID"),
     appSecret: () => req("PRIVY_APP_SECRET"),
-    authKey: () => opt("PRIVY_AUTHORIZATION_PRIVATE_KEY"),
+    /** Comma-separated: a quorum-owned wallet needs m signatures, not one. */
+    authKeys: (): string[] =>
+      opt("PRIVY_AUTHORIZATION_PRIVATE_KEY")
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean),
     quorumId: () => opt("PRIVY_TREASURY_QUORUM_ID"),
     base: () => opt("PRIVY_API_BASE", "https://api.privy.io"),
   },

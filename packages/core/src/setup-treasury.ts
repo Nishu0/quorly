@@ -92,20 +92,29 @@ const policy = await privy.createPolicy({
   }),
 });
 console.log(`  policy       ${policy.id}`);
-console.log(`               USDC only, max $${ceiling.toLocaleString()} per transfer`);
+console.log(`               settlement token only, max $${ceiling.toLocaleString()} per transfer`);
 console.log(`               ${allowedRecipients.length
   ? `${allowedRecipients.length} allowlisted payee(s)`
   : "no payee allowlist yet — add member wallets, then re-run"}`);
 
 // 3. The wallet, owned by the quorum and bound to the policy.
-const wallet = await privy.createWallet({
-  chainType: "ethereum",
-  displayName: `${org.name} treasury`,
-  externalId: `treasury_${orgId}`,
-  ownerId: quorumId,
-  policyIds: [policy.id],
-});
-console.log(`  wallet       ${wallet.id}`);
+// Re-running must re-point the existing wallet rather than create a second one
+// — Privy rejects a reused idempotency key whose body has changed, and a second
+// treasury would silently split the org's funds.
+let wallet;
+if (org.treasuryWalletId) {
+  wallet = await privy.updateWallet(org.treasuryWalletId, { policyIds: [policy.id] });
+  console.log(`  wallet       ${wallet.id} (reusing, policy re-pointed)`);
+} else {
+  wallet = await privy.createWallet({
+    chainType: "ethereum",
+    displayName: `${org.name} treasury`,
+    externalId: `treasury_${orgId}_${Date.now()}`,
+    ownerId: quorumId,
+    policyIds: [policy.id],
+  });
+  console.log(`  wallet       ${wallet.id}`);
+}
 console.log(`  address      ${wallet.address}\n`);
 
 await db

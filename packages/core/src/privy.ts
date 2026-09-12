@@ -91,7 +91,7 @@ export class PrivyClient {
     private appId = env.privy.appId(),
     private appSecret = env.privy.appSecret(),
     private base = env.privy.base(),
-    private authKey = env.privy.authKey(),
+    private authKeys: string[] = env.privy.authKeys(),
   ) {}
 
   private async call<T>(
@@ -107,10 +107,15 @@ export class PrivyClient {
       "Content-Type": "application/json",
     };
     if (opts.idempotencyKey) headers["privy-idempotency-key"] = opts.idempotencyKey;
-    if (opts.sign && this.authKey) {
-      headers["privy-authorization-signature"] = authorizationSignature({
-        method, url, body: body ?? {}, appId: this.appId, privateKey: this.authKey,
-      });
+    if (opts.sign && this.authKeys.length > 0) {
+      // One signature per key, comma-separated. A wallet owned by an m-of-n
+      // quorum rejects the request unless it carries m of them — which is the
+      // whole point of the quorum, and why a single server key isn't enough.
+      headers["privy-authorization-signature"] = this.authKeys
+        .map((privateKey) =>
+          authorizationSignature({ method, url, body: body ?? {}, appId: this.appId, privateKey }),
+        )
+        .join(",");
     }
 
     const res = await fetch(url, {
@@ -186,6 +191,19 @@ export class PrivyClient {
 
   getWallet(walletId: string): Promise<PrivyWallet> {
     return this.call("GET", `/v1/wallets/${walletId}`);
+  }
+
+  /** Re-point an existing wallet at a new policy set, owner, or signers. */
+  updateWallet(walletId: string, input: {
+    policyIds?: string[];
+    ownerId?: string;
+    displayName?: string;
+  }): Promise<PrivyWallet> {
+    return this.call("PATCH", `/v1/wallets/${walletId}`, {
+      ...(input.policyIds ? { policy_ids: input.policyIds } : {}),
+      ...(input.ownerId ? { owner_id: input.ownerId } : {}),
+      ...(input.displayName ? { display_name: input.displayName } : {}),
+    }, { sign: true });
   }
 
   /* -------------------------------- intents ------------------------------- */
