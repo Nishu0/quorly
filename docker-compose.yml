@@ -1,0 +1,63 @@
+name: quorly
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?set SITE_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # certificates — losing this means re-issuing
+      - caddy_config:/config
+      - caddy_logs:/var/log/caddy
+    depends_on:
+      - web
+      - api
+
+  api:
+    build:
+      context: ./server
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      ADDR: ":8080"
+      APP_URL: https://${SITE_DOMAIN}
+    expose:
+      - "8080"
+    healthcheck:
+      # The Go image has no curl or wget, so the binary answers for itself.
+      test: ["CMD", "/usr/local/bin/quorlyctl", "queue"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_PRIVY_APP_ID: ${NEXT_PUBLIC_PRIVY_APP_ID}
+        NEXT_PUBLIC_WORLD_APP_ID: ${NEXT_PUBLIC_WORLD_APP_ID}
+        NEXT_PUBLIC_WORLD_ACTION: ${NEXT_PUBLIC_WORLD_ACTION:-approve-payout}
+    restart: unless-stopped
+    environment:
+      # Server-to-server over the compose network: the API is never public
+      # through this path, so the Privy cookie stays same-origin.
+      QUORLY_API_URL: http://api:8080
+      APP_URL: https://${SITE_DOMAIN}
+    expose:
+      - "3000"
+    depends_on:
+      - api
+
+volumes:
+  caddy_data:
+  caddy_config:
+  caddy_logs:

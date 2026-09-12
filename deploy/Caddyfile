@@ -1,0 +1,62 @@
+# Caddy terminates TLS and gets certificates from Let's Encrypt automatically,
+# which is the whole reason it's here rather than nginx.
+
+{
+	email {$ACME_EMAIL}
+}
+
+# The app. Everything the browser and Slack touch comes through here.
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	# Slack signs the raw request body, so nothing may rewrite it in transit.
+	handle /slack/* {
+		reverse_proxy web:3000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# The app is not meant to be framed, and World App opens it directly.
+		X-Frame-Options "DENY"
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/app.log {
+			roll_size 10mb
+			roll_keep 5
+		}
+	}
+}
+
+# The Go API, exposed for debugging and for pointing Slack straight at it if
+# the proxy hop ever needs to come out.
+{$API_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy api:8080
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/api.log {
+			roll_size 10mb
+			roll_keep 5
+		}
+	}
+}
+
+# www redirects rather than serving a duplicate origin — two live origins would
+# mean two entries in every allowlist (Privy, Slack, World).
+www.{$SITE_DOMAIN} {
+	redir https://{$SITE_DOMAIN}{uri} permanent
+}
