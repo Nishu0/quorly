@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Instrument_Sans, Instrument_Serif, JetBrains_Mono, Silkscreen } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { SiteChrome } from "@/components/quorly/site-chrome";
-import { Logo } from "@/components/quorly/logo";
+import { BrandMark } from "@/components/quorly/brand-mark";
 import "./globals.css";
 
 const sans = Instrument_Sans({
@@ -54,7 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${sans.variable} ${serif.variable} ${mono.variable} ${pixel.variable}`}>
       <body className="flex min-h-screen flex-col">
         <Providers>
-          <SiteChrome logo={<Logo bare markOnly />}>{children}</SiteChrome>
+          <SiteChrome logo={<BrandMark />}>{children}</SiteChrome>
         </Providers>
       </body>
     </html>

@@ -1,21 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { redirect } from "next/navigation";
 import { apiOrNull, type Member } from "@/lib/api";
 import { LoginPanel } from "./login-panel";
+import { BrandMark } from "@/components/quorly/brand-mark";
 import { DitherBackground } from "@/components/quorly/dither-background";
 
 export const metadata: Metadata = { title: "Sign in" };
 export const dynamic = "force-dynamic";
 
-function hasLogo() {
-  return ["apps/web/public/logo.png", "public/logo.png"].some((p) =>
-    existsSync(join(process.cwd(), p)),
-  );
-}
 
 export default async function LoginPage() {
   // Already signed in? There's nothing to do here.
@@ -26,11 +20,8 @@ export default async function LoginPage() {
     <div className="dithered grid min-h-[calc(100vh-4rem)] gap-10 lg:grid-cols-2 lg:gap-16">
       <DitherBackground light="#ffffff" dark="#5ea6e5" scale={3} />
       <div className="flex flex-col justify-between py-2">
-        <Link href="/" className="flex items-center gap-2.5 text-sm">
-          {hasLogo() && (
-            <Image src="/logo.png" alt="" width={200} height={200} className="size-7 rounded-md" />
-          )}
-          <span className="display text-lg">Quorly</span>
+        <Link href="/" className="navchip group inline-flex w-fit items-center py-1.5 pl-1.5 pr-4">
+          <BrandMark />
         </Link>
 
         <div className="panel max-w-md p-8">
@@ -82,15 +73,13 @@ export default async function LoginPage() {
 
       <div className="panel relative hidden overflow-hidden lg:block">
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">
-          {hasLogo() && (
-            <Image
-              src="/logo.png"
-              alt=""
-              width={200}
-              height={200}
-              className="size-14 rounded-xl opacity-90"
-            />
-          )}
+          <Image
+            src="/logo.png"
+            alt=""
+            width={200}
+            height={200}
+            className="size-14 rounded-xl"
+          />
           <p className="pixel text-[0.6875rem] uppercase tracking-[0.24em] text-[var(--panel-ink)]">
             Route. Prove. Pay.
           </p>

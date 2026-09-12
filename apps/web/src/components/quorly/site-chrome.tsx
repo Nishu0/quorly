@@ -35,9 +35,6 @@ export function SiteChrome({
             className="navchip group flex shrink-0 items-center gap-2.5 py-1.5 pl-1.5 pr-4"
           >
             {logo}
-            <span className="pixel hidden text-[0.8125rem] leading-none text-[#0b1f31] sm:block">
-              QUORLY
-            </span>
           </Link>
 
           <div className="flex flex-1 justify-center">

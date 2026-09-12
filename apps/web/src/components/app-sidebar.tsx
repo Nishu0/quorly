@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { BrandMark } from "@/components/quorly/brand-mark";
 import {
   IconCoin,
   IconDroplet,
@@ -77,8 +77,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className="data-[slot=sidebar-menu-button]:!p-1.5"
               render={<Link href="/dashboard" />}
             >
-              <Image src="/logo.png" alt="" width={200} height={200} className="size-5 rounded" />
-              <span className="text-base font-semibold">Quorly</span>
+              <BrandMark size="sm" />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
