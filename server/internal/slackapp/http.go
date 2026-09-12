@@ -165,7 +165,7 @@ func (a *App) onMessage(ctx context.Context, ev incoming) {
 		return
 	}
 
-	member, err := a.memberFor(ctx, ev.User)
+	member, err := a.memberFor(ctx, ev.TeamID, ev.User)
 	if err != nil {
 		a.say(ctx, client, ev.Channel, fmt.Sprintf(
 			"I don't have you on a roster yet. Ask an owner to invite you, or sign in at %s.", a.AppURL))
@@ -268,7 +268,7 @@ func (a *App) onInteraction(ctx context.Context, cb slack.InteractionCallback) {
 		return
 	}
 
-	member, err := a.memberFor(ctx, cb.User.ID)
+	member, err := a.memberFor(ctx, cb.Team.ID, cb.User.ID)
 	if err != nil {
 		a.respond(cb.ResponseURL, "I don't know who you are in Quorly.")
 		return
@@ -355,7 +355,7 @@ func (a *App) handleCommand(w http.ResponseWriter, r *http.Request) {
 	userID := values.Get("user_id")
 	text := strings.TrimSpace(values.Get("text"))
 
-	member, err := a.memberFor(r.Context(), userID)
+	member, err := a.memberFor(r.Context(), values.Get("team_id"), userID)
 	if err != nil {
 		writeEphemeral(w, "You're not on a Quorly roster yet. Sign in at "+a.AppURL)
 		return

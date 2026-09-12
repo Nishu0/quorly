@@ -132,3 +132,52 @@ func TestClaimMemberSeatWontStealAHeldSeat(t *testing.T) {
 		t.Error("a second Privy account took over a seat that was already held")
 	}
 }
+
+// The bug behind /quorly team answering with the wrong roster: slack_user_id
+// carries no unique index, so the same person on two rosters made an unscoped
+// lookup return whichever row came first — here, an org with no workspace at
+// all. Resolving through the team id is what disambiguates them.
+func TestMemberBySlackTeamUserPicksTheActingWorkspace(t *testing.T) {
+	db := setup(t)
+	ctx := context.Background()
+
+	stamp := time.Now().Format("150405.000000")
+	slackUser := "U_TEST_" + stamp
+	teamID := "T_TEST_" + stamp
+	unlinkedOrg := "org_test_unlinked_" + stamp
+	linkedOrg := "org_test_linked_" + stamp
+
+	// An org with no Slack workspace, holding the same person's Slack ID —
+	// exactly the shape the demo seed creates.
+	strayID := seedSeat(t, db, unlinkedOrg, "stray-"+stamp+"@quorly.test", "approver")
+	if _, err := db.Pool().Exec(ctx,
+		`UPDATE members SET slack_user_id=$2 WHERE id=$1`, strayID, slackUser); err != nil {
+		t.Fatal(err)
+	}
+
+	wantID := seedSeat(t, db, linkedOrg, "real-"+stamp+"@quorly.test", "owner")
+	if _, err := db.Pool().Exec(ctx,
+		`UPDATE members SET slack_user_id=$2 WHERE id=$1`, wantID, slackUser); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Pool().Exec(ctx,
+		`UPDATE orgs SET slack_team_id=$2 WHERE id=$1`, linkedOrg, teamID); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := db.MemberBySlackTeamUser(ctx, teamID, slackUser)
+	if err != nil {
+		t.Fatalf("lookup failed: %v", err)
+	}
+	if got.ID != wantID {
+		t.Errorf("resolved to seat %s, want %s in the workspace that was acted in", got.ID, wantID)
+	}
+	if got.OrgID != linkedOrg {
+		t.Errorf("resolved into org %s, want %s", got.OrgID, linkedOrg)
+	}
+
+	// A workspace nobody has installed must not fall back to some other org.
+	if _, err := db.MemberBySlackTeamUser(ctx, "T_NOT_INSTALLED_"+stamp, slackUser); err == nil {
+		t.Error("an unknown workspace resolved to a member anyway")
+	}
+}

@@ -41,9 +41,10 @@ func (a *App) clientFor(ctx context.Context, teamID string) (*slack.Client, doma
 	return nil, domain.SlackInstallation{}, fmt.Errorf("workspace %s has not installed Quorly", teamID)
 }
 
-// memberFor resolves the Slack user to a Quorly member.
-func (a *App) memberFor(ctx context.Context, slackUserID string) (domain.Member, error) {
-	return a.DB.MemberBySlackID(ctx, slackUserID)
+// memberFor resolves the Slack user to a Quorly member, within the workspace
+// the request came from — never by Slack ID alone.
+func (a *App) memberFor(ctx context.Context, slackTeamID, slackUserID string) (domain.Member, error) {
+	return a.DB.MemberBySlackTeamUser(ctx, slackTeamID, slackUserID)
 }
 
 // FanOut posts the approval card to every eligible approver's DM.

@@ -80,9 +80,17 @@ func (s *Store) MemberByPrivyID(ctx context.Context, privyUserID string) (domain
 		`SELECT `+memberCols+` FROM members WHERE privy_user_id=$1`, privyUserID))
 }
 
-func (s *Store) MemberBySlackID(ctx context.Context, slackUserID string) (domain.Member, error) {
-	return scanMember(s.pool.QueryRow(ctx,
-		`SELECT `+memberCols+` FROM members WHERE slack_user_id=$1`, slackUserID))
+// MemberBySlackTeamUser resolves a Slack user inside the workspace they acted
+// in. The scoping is the point: one person can hold a seat on several rosters
+// under the same Slack ID, and slack_user_id carries no unique index, so an
+// unscoped lookup answers with whichever row Postgres reaches first — which is
+// how /quorly team came back with a different org's roster entirely.
+func (s *Store) MemberBySlackTeamUser(ctx context.Context, slackTeamID, slackUserID string) (domain.Member, error) {
+	return scanMember(s.pool.QueryRow(ctx, `
+		SELECT `+memberCols+` FROM members
+		WHERE slack_user_id=$2
+		  AND org_id = (SELECT id FROM orgs WHERE slack_team_id=$1)`,
+		slackTeamID, slackUserID))
 }
 
 func (s *Store) Members(ctx context.Context, orgID string) ([]domain.Member, error) {
