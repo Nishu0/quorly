@@ -3,10 +3,9 @@
 import { useEffect, useRef } from "react";
 
 /**
- * Dithered cloud field: fractal noise pushed to two colours through a Bayer
- * 4×4 ordered dither, so every pixel is either paper or blue and the gradient
- * exists only as a pattern. Two colours, no anti-aliasing — the constraint is
- * the aesthetic.
+ * Dithered cloud field: fractal noise pushed to two colours through an ordered
+ * dither, so every pixel is either light or dark and the gradient exists only
+ * as a pattern. Two colours, no anti-aliasing — the constraint is the point.
  */
 const VERTEX = `
 attribute vec2 a_position;
@@ -36,8 +35,8 @@ float noise(vec2 p) {
              mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 
-// Layered noise: each octave halves in amplitude and doubles in frequency,
-// which is what gives clouds their soft-then-detailed structure.
+// Each octave halves in amplitude and doubles in frequency, which is what
+// gives clouds their soft-then-detailed structure.
 float fbm(vec2 p) {
   float value = 0.0;
   float amplitude = 0.5;
@@ -49,29 +48,19 @@ float fbm(vec2 p) {
   return value;
 }
 
-// Bayer 4x4 threshold map, unrolled — WebGL1 has no array indexing by a
-// non-constant expression.
+// Bayer 4x4, computed rather than looked up.
+//
+// The usual unrolled version needs sixteen branches comparing two ints with
+// logical AND, and GLSL ES 1.0 compilers vary in how they handle that - one
+// refused it outright with no info log. Nesting a 2x2 pattern inside itself is
+// exact, branch-free, and compiles everywhere.
+float bayer2(vec2 c) {
+  return mod(2.0 * mod(c.y, 2.0) + 3.0 * mod(c.x, 2.0), 4.0);
+}
+
 float bayer(vec2 c) {
-  int x = int(mod(c.x, 4.0));
-  int y = int(mod(c.y, 4.0));
-  float l = 0.0;
-  if (x==0 && y==0) l = 0.0000;
-  if (x==1 && y==0) l = 0.5000;
-  if (x==2 && y==0) l = 0.1250;
-  if (x==3 && y==0) l = 0.6250;
-  if (x==0 && y==1) l = 0.7500;
-  if (x==1 && y==1) l = 0.2500;
-  if (x==2 && y==1) l = 0.8750;
-  if (x==3 && y==1) l = 0.3750;
-  if (x==0 && y==2) l = 0.1875;
-  if (x==1 && y==2) l = 0.6875;
-  if (x==2 && y==2) l = 0.0625;
-  if (x==3 && y==2) l = 0.5625;
-  if (x==0 && y==3) l = 0.9375;
-  if (x==1 && y==3) l = 0.4375;
-  if (x==2 && y==3) l = 0.8125;
-  if (x==3 && y==3) l = 0.3125;
-  return l;
+  vec2 p = floor(mod(c, 4.0));
+  return (4.0 * bayer2(floor(p * 0.5)) + bayer2(p)) / 16.0;
 }
 
 void main() {
@@ -82,7 +71,6 @@ void main() {
   float n = fbm(st * u_scale + vec2(u_time * 0.05, u_time * 0.02));
   n = smoothstep(0.3, 0.7, n);
 
-  // Dither at a fixed pixel grid so the pattern stays crisp regardless of DPR.
   float stepVal = step(bayer(gl_FragCoord.xy), n);
 
   gl_FragColor = vec4(mix(u_dark, u_light, stepVal), 1.0);
@@ -95,7 +83,8 @@ function compile(gl: WebGLRenderingContext, src: string, type: number) {
   gl.shaderSource(shader, src);
   gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    console.error("shader:", gl.getShaderInfoLog(shader));
+    const log = gl.getShaderInfoLog(shader);
+    console.error(`dither shader failed to compile: ${log || "(driver gave no log)"}`);
     gl.deleteShader(shader);
     return null;
   }
@@ -108,8 +97,8 @@ function rgb(hex: string): [number, number, number] {
 }
 
 export function DitherBackground({
-  light = "#faf7f0",
-  dark = "#1f4b3f",
+  light = "#ffffff",
+  dark = "#5ea6e5",
   scale = 3,
   className = "",
 }: {
@@ -125,7 +114,7 @@ export function DitherBackground({
     if (!canvas) return;
 
     const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
-    if (!gl) return; // no WebGL: the CSS background underneath stands in
+    if (!gl) return; // no WebGL: the CSS ground underneath stands in
 
     const vs = compile(gl, VERTEX, gl.VERTEX_SHADER);
     const fs = compile(gl, FRAGMENT, gl.FRAGMENT_SHADER);
@@ -136,6 +125,10 @@ export function DitherBackground({
     gl.attachShader(program, vs);
     gl.attachShader(program, fs);
     gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      console.error("dither program failed to link:", gl.getProgramInfoLog(program));
+      return;
+    }
     gl.useProgram(program);
 
     const buffer = gl.createBuffer();
@@ -172,7 +165,6 @@ export function DitherBackground({
 
     const draw = () => {
       gl.uniform2f(uRes, canvas.width, canvas.height);
-      // Still frame for reduced motion — the texture without the drift.
       gl.uniform1f(uTime, reduced ? 0 : (Date.now() - start) / 1000);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       if (!reduced) frame = requestAnimationFrame(draw);

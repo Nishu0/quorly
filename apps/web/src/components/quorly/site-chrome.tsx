@@ -33,13 +33,9 @@ export function SiteChrome({
         <div className="titlebar">
           <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-5 lg:px-8">
             <Link href="/" className="group flex shrink-0 items-center gap-2.5">
+              {/* Passed in bare — this Link is the anchor. */}
               {logo}
-              <span className="hidden leading-none sm:block">
-                <span className="pixel block text-sm text-white">QUORLY</span>
-                <span className="pixel mt-1 block text-[0.5rem] tracking-[0.08em] text-[var(--bar-dim)]">
-                  ROUTE. PROVE. PAY.
-                </span>
-              </span>
+              <span className="pixel hidden text-sm leading-none text-white sm:block">QUORLY</span>
             </Link>
 
             <div className="flex flex-1 justify-center">

@@ -54,7 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${sans.variable} ${serif.variable} ${mono.variable} ${pixel.variable}`}>
       <body className="flex min-h-screen flex-col">
         <Providers>
-          <SiteChrome logo={<Logo />}>{children}</SiteChrome>
+          <SiteChrome logo={<Logo bare markOnly />}>{children}</SiteChrome>
         </Providers>
       </body>
     </html>

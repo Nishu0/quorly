@@ -22,11 +22,55 @@ function findLogo(): { src: string; width: number; height: number } | null {
   return null;
 }
 
-export function Logo({ href = "/" }: { href?: string }) {
+/**
+ * `bare` renders the mark with no anchor of its own, for callers that already
+ * wrap it in a link — nesting one <a> inside another is invalid HTML and React
+ * refuses it outright.
+ */
+export function Logo({
+  href = "/",
+  bare = false,
+  markOnly = false,
+}: {
+  href?: string;
+  bare?: boolean;
+  /** Just the square mark, for chrome that supplies its own wordmark. */
+  markOnly?: boolean;
+}) {
   const logo = findLogo();
+  const inner = <LogoMark logo={logo} markOnly={markOnly} />;
+
+  if (bare) return inner;
 
   return (
     <Link href={href} className="group flex shrink-0 items-center" aria-label="Quorly">
+      {inner}
+    </Link>
+  );
+}
+
+function LogoMark({
+  logo,
+  markOnly,
+}: {
+  logo: { src: string; width: number; height: number } | null;
+  markOnly?: boolean;
+}) {
+  if (logo && markOnly) {
+    return (
+      <Image
+        src={logo.src}
+        alt=""
+        width={logo.width}
+        height={logo.height}
+        priority
+        className="size-8 rounded-md transition-transform duration-300 group-hover:scale-105"
+      />
+    );
+  }
+
+  return (
+    <>
       {logo ? (
         // A square mark reads better paired with the wordmark than alone.
         <span className="flex items-center gap-2.5">
@@ -49,6 +93,6 @@ export function Logo({ href = "/" }: { href?: string }) {
           />
         </span>
       )}
-    </Link>
+    </>
   );
 }
