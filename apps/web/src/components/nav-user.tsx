@@ -15,6 +15,7 @@ import { shortAddress } from "@/lib/format";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -89,49 +90,54 @@ export function NavUser({ member }: { member: Member }) {
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuLabel className="text-[0.6875rem] tracking-wide text-muted-foreground uppercase">
-              Wallet
-            </DropdownMenuLabel>
+            {/* GroupLabel reads MenuGroupContext, so it throws unless a Group
+                provides one — the label and the wallet actions belong to the
+                same group anyway. */}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-[0.6875rem] tracking-wide text-muted-foreground uppercase">
+                Wallet
+              </DropdownMenuLabel>
 
-            {wallet ? (
-              <>
+              {wallet ? (
+                <>
                 {/* A menu item rather than a bare button, so the keyboard can
                     reach it — Base UI only rolls tabindex over its own items.
                     closeOnClick keeps the menu up long enough to show the tick. */}
-                <DropdownMenuItem
-                  closeOnClick={false}
-                  onClick={copyWallet}
-                  aria-label="Copy wallet address"
-                  title={wallet}
-                >
-                  {copied ? <IconCheck className="text-forest" /> : <IconCopy />}
-                  <span className="min-w-0 flex-1 truncate font-mono text-xs">
-                    {shortAddress(wallet)}
-                  </span>
-                  <span className="text-[0.6875rem] text-muted-foreground">
-                    {copied ? "Copied" : "Copy"}
-                  </span>
-                </DropdownMenuItem>
+                  <DropdownMenuItem
+                    closeOnClick={false}
+                    onClick={copyWallet}
+                    aria-label="Copy wallet address"
+                    title={wallet}
+                  >
+                    {copied ? <IconCheck className="text-forest" /> : <IconCopy />}
+                    <span className="min-w-0 flex-1 truncate font-mono text-xs">
+                      {shortAddress(wallet)}
+                    </span>
+                    <span className="text-[0.6875rem] text-muted-foreground">
+                      {copied ? "Copied" : "Copy"}
+                    </span>
+                  </DropdownMenuItem>
 
-                <DropdownMenuItem
-                  render={
-                    <a
-                      href={`${EXPLORER}/address/${wallet}`}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                    />
-                  }
-                >
-                  <IconExternalLink />
-                  View on Base Sepolia
-                </DropdownMenuItem>
-              </>
-            ) : (
-              <p className="px-1.5 py-1 text-xs text-muted-foreground">
-                No wallet yet — Privy creates one on first sign-in with an
-                embedded wallet.
-              </p>
-            )}
+                  <DropdownMenuItem
+                    render={
+                      <a
+                        href={`${EXPLORER}/address/${wallet}`}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                      />
+                    }
+                  >
+                    <IconExternalLink />
+                    View on Base Sepolia
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <p className="px-1.5 py-1 text-xs text-muted-foreground">
+                  No wallet yet — Privy creates one on first sign-in with an
+                  embedded wallet.
+                </p>
+              )}
+            </DropdownMenuGroup>
 
             <DropdownMenuSeparator />
 

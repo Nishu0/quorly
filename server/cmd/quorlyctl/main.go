@@ -2,8 +2,8 @@
 // inspect the roster and the queue.
 //
 //	quorlyctl seed                 provision the demo org (idempotent)
-//	quorlyctl invoice [amount]     file an invoice and print the approval link
-//	quorlyctl roster               who's on the roster and what they can do
+//	quorlyctl invoice [amount] [org]  file an invoice and print the approval link
+//	quorlyctl roster [org]         who's on the roster and what they can do
 //	quorlyctl queue                pending, claimed, dead
 //	quorlyctl worldcheck           prove the World signing key works
 package main
@@ -57,9 +57,20 @@ func main() {
 				amount = v
 			}
 		}
-		invoice(ctx, cfg, db, amount)
+		// Default to the demo org, but allow a real one: an invoice filed into
+		// an org you are not signed in to is invisible to you, because the API
+		// scopes every lookup by the caller's org.
+		org := demoOrg
+		if len(os.Args) > 3 {
+			org = os.Args[3]
+		}
+		invoice(ctx, cfg, db, amount, org)
 	case "roster":
-		roster(ctx, db)
+		org := demoOrg
+		if len(os.Args) > 2 {
+			org = os.Args[2]
+		}
+		roster(ctx, db, org)
 	case "queue":
 		stats, err := queue.New(db.Pool()).Stats(ctx)
 		if err != nil {
@@ -137,7 +148,7 @@ func seed(ctx context.Context, db *store.Store) {
 
 // invoice files one as the contractor, so the approver can act on it without
 // tripping the self-approval block.
-func invoice(ctx context.Context, cfg *config.Config, db *store.Store, amount float64) {
+func invoice(ctx context.Context, cfg *config.Config, db *store.Store, amount float64, orgID string) {
 	svc := &service.Service{
 		DB:          db,
 		World:       worldid.New(cfg.World.BaseURL, cfg.World.RPID, cfg.World.Environment, cfg.Demo()),
@@ -150,8 +161,13 @@ func invoice(ctx context.Context, cfg *config.Config, db *store.Store, amount fl
 	payee := "0x1111111111111111111111111111111111111111"
 	ens := "priya.acmelabs.eth"
 
+	submitter, err := pickSubmitter(ctx, db, orgID)
+	if err != nil {
+		fail(err)
+	}
+
 	inv, decision, err := svc.CreateInvoice(ctx, service.NewInvoice{
-		OrgID: demoOrg, SubmitterID: "mem_demo_contractor",
+		OrgID: orgID, SubmitterID: submitter,
 		Amount: amount, Description: &desc, Number: &number,
 		PayeeAddress: &payee, PayeeENS: &ens,
 	})
@@ -173,8 +189,8 @@ func invoice(ctx context.Context, cfg *config.Config, db *store.Store, amount fl
 	fmt.Printf("\nInvoice page: %s/invoices/%s\n", cfg.AppURL, inv.ID)
 }
 
-func roster(ctx context.Context, db *store.Store) {
-	members, err := db.Members(ctx, demoOrg)
+func roster(ctx context.Context, db *store.Store, orgID string) {
+	members, err := db.Members(ctx, orgID)
 	if err != nil {
 		fail(err)
 	}
@@ -189,6 +205,37 @@ func roster(ctx context.Context, db *store.Store) {
 		fmt.Printf("%-20s %-30s %-9s privy=%-28s slack=%s\n",
 			m.Display(), m.Email, m.Role, privy, slack)
 	}
+}
+
+// pickSubmitter finds someone in the org to file the invoice as. Every tier
+// blocks self-approval, so filing as an approver would leave the invoice with
+// nobody able to sign it off — prefer the least privileged seat.
+func pickSubmitter(ctx context.Context, db *store.Store, orgID string) (string, error) {
+	members, err := db.Members(ctx, orgID)
+	if err != nil {
+		return "", err
+	}
+	if len(members) == 0 {
+		return "", fmt.Errorf("org %s has no members — run `quorlyctl seed`, or invite someone", orgID)
+	}
+
+	rank := map[domain.Role]int{
+		domain.RoleMember:   0,
+		domain.RoleFinance:  1,
+		domain.RoleApprover: 2,
+		domain.RoleOwner:    3,
+	}
+	best := members[0]
+	for _, m := range members[1:] {
+		if rank[m.Role] < rank[best.Role] {
+			best = m
+		}
+	}
+	if rank[best.Role] >= rank[domain.RoleApprover] {
+		fmt.Printf("note: everyone in %s can approve, so filing as %s — "+
+			"self-approval is blocked, approve as somebody else\n", orgID, best.Display())
+	}
+	return best.ID, nil
 }
 
 func worldcheck(cfg *config.Config) {
