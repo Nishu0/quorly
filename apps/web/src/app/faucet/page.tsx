@@ -1,14 +1,20 @@
-import { eq } from "drizzle-orm";
 import { formatUnits } from "viem";
-import { db, orgs } from "@quorly/core/db";
+import { apiOrNull } from "@/lib/api";
+import { shortAddress } from "@/lib/format";
 import { PageHeader, Field, Amount } from "@/components/quorly/primitives";
 import { QUSD_ABI, publicClient, qusdAddress } from "@/lib/qusd";
 import { FaucetForm } from "./faucet-form";
 
 export const dynamic = "force-dynamic";
 
+interface Org {
+  name: string;
+  treasuryAddress: string | null;
+  settlementToken: string;
+}
+
 export default async function FaucetPage() {
-  const org = await db.query.orgs.findFirst({ where: eq(orgs.id, "org_demo_acme") }).catch(() => undefined);
+  const org = await apiOrNull<Org>("/api/org");
   const token = qusdAddress();
 
   let treasuryBalance: string | null = null;
@@ -55,7 +61,7 @@ export default async function FaucetPage() {
           <div className="rounded-lg border border-rule bg-card px-6 py-2">
             <dl>
               <Field label="Token" mono>
-                {token ? `${token.slice(0, 10)}…${token.slice(-6)}` : "not deployed"}
+                {token ? shortAddress(token) : "not deployed"}
               </Field>
               <Field label="Symbol">QUSD</Field>
               <Field label="Decimals" mono>
@@ -63,9 +69,7 @@ export default async function FaucetPage() {
               </Field>
               <Field label="Network">Base Sepolia</Field>
               <Field label="Treasury" mono>
-                {org?.treasuryAddress
-                  ? `${org.treasuryAddress.slice(0, 10)}…${org.treasuryAddress.slice(-6)}`
-                  : "—"}
+                {shortAddress(org?.treasuryAddress)}
               </Field>
             </dl>
           </div>

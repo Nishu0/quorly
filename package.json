@@ -2,24 +2,17 @@
   "name": "quorly",
   "private": true,
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "apps/*"
   ],
   "scripts": {
-    "dev": "bun run --filter '*' dev",
     "dev:web": "bun run --cwd apps/web dev",
-    "dev:bot": "bun run --cwd apps/bot dev",
-    "db:push": "bun run --cwd packages/core db:push",
-    "db:studio": "bun run --cwd packages/core db:studio",
-    "seed": "bun run --cwd packages/core seed",
-    "typecheck": "tsc -b --pretty",
-    "test": "bun test",
-    "test:watch": "bun test --watch",
-    "demo:invoice": "bun run --cwd packages/core demo:invoice",
-    "demo:slack": "bun run --cwd apps/bot demo",
-    "setup:treasury": "bun run --cwd packages/core setup:treasury",
+    "dev:server": "cd server && go run ./cmd/quorly",
+    "build:web": "bun run --cwd apps/web build",
+    "migrate": "cd server && go run ./cmd/quorly -migrate",
+    "test": "cd server && go test ./...",
+    "test:contracts": "cd contracts && forge test",
     "deploy:qusd": "cd contracts && forge script script/DeployQuorlyUSD.s.sol:DeployQuorlyUSD --rpc-url $RPC_URL --broadcast --verify --verifier blockscout --verifier-url https://base-sepolia.blockscout.com/api",
-    "test:contracts": "cd contracts && forge test"
+    "typecheck": "bun run --cwd apps/web exec tsc --noEmit"
   },
   "devDependencies": {
     "@types/bun": "latest",

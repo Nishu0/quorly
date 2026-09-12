@@ -43,6 +43,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/invoices", s.createInvoice)
 	mux.HandleFunc("POST /api/invoices/{id}/decide", s.decide)
 
+	mux.HandleFunc("GET /api/org", s.getOrg)
 	mux.HandleFunc("GET /api/policies", s.listPolicies)
 	mux.HandleFunc("GET /api/members", s.listMembers)
 

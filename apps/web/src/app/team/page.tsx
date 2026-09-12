@@ -1,5 +1,5 @@
-import { db, members } from "@quorly/core/db";
-import { PageHeader } from "@/components/quorly/primitives";
+import { apiOrNull, type Member } from "@/lib/api";
+import { Empty, PageHeader } from "@/components/quorly/primitives";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,13 @@ const ROLE_COPY: Record<string, string> = {
 };
 
 export default async function TeamPage() {
-  const roster = await db.select().from(members).catch(() => []);
+  const data = await apiOrNull<{ members: Member[] }>("/api/members");
+
+  if (!data) {
+    return <Empty title="Sign in to see your team" body="The roster is per organisation." />;
+  }
+
+  const roster = data.members ?? [];
 
   return (
     <div>
@@ -40,11 +46,7 @@ export default async function TeamPage() {
             <div className="min-w-0">
               <p className="truncate font-medium">{m.name ?? m.email}</p>
               <p className="mt-0.5 truncate text-xs text-ink-faint">
-                {m.ensSubname ? (
-                  <span className="font-mono">{m.ensSubname}</span>
-                ) : (
-                  m.email
-                )}
+                {m.ensSubname ? <span className="font-mono">{m.ensSubname}</span> : m.email}
                 <span className="mx-2 text-rule-strong">·</span>
                 {ROLE_COPY[m.role] ?? m.role}
               </p>

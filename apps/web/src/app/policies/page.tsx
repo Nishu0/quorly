@@ -1,11 +1,16 @@
-import { asc } from "drizzle-orm";
-import { db, policies } from "@quorly/core/db";
-import { Amount, PageHeader } from "@/components/quorly/primitives";
+import { apiOrNull, type Policy } from "@/lib/api";
+import { Amount, Empty, PageHeader } from "@/components/quorly/primitives";
 
 export const dynamic = "force-dynamic";
 
 export default async function PoliciesPage() {
-  const tiers = await db.select().from(policies).orderBy(asc(policies.maxAmount)).catch(() => []);
+  const data = await apiOrNull<{ policies: Policy[] }>("/api/policies");
+
+  if (!data) {
+    return <Empty title="Sign in to see your policy" body="Approval tiers are per organisation." />;
+  }
+
+  const tiers = data.policies ?? [];
 
   return (
     <div>
@@ -23,45 +28,41 @@ export default async function PoliciesPage() {
 
       <div className="reveal grid gap-px overflow-hidden rounded-lg border border-rule bg-rule md:grid-cols-3">
         {tiers.map((t, i) => (
-          <article
-            key={t.id}
-            className="flex flex-col bg-card p-7"
-            style={{ animationDelay: `${i * 70}ms` }}
-          >
+          <article key={t.ID} className="flex flex-col bg-card p-7">
             <div className="mb-6 flex items-baseline justify-between">
-              <h2 className="display text-2xl">{t.name}</h2>
+              <h2 className="display text-2xl">{t.Name}</h2>
               <span className="label">{String(i + 1).padStart(2, "0")}</span>
             </div>
 
             <p className="mb-1 text-xs text-ink-faint">up to</p>
-            <Amount value={t.maxAmount} size="lg" className="mb-7" />
+            <Amount value={t.MaxAmount} size="lg" className="mb-7" />
 
             <dl className="mt-auto space-y-3 text-sm">
               <div className="flex items-baseline justify-between gap-4">
                 <dt className="text-ink-soft">Approvals</dt>
-                <dd className="tnum font-mono">{t.requiredApprovals}</dd>
+                <dd className="tnum font-mono">{t.RequiredApprovals}</dd>
               </div>
               <div className="flex items-baseline justify-between gap-4">
                 <dt className="text-ink-soft">From</dt>
-                <dd className="text-right">{t.approverRoles.join(", ")}</dd>
+                <dd className="text-right">{(t.ApproverRoles ?? []).join(", ")}</dd>
               </div>
               <div className="flex items-baseline justify-between gap-4">
                 <dt className="text-ink-soft">Selfie Check</dt>
-                <dd className={t.requiredAttestation ? "text-forest" : "text-ink-faint"}>
-                  {t.requiredAttestation ? `within ${t.attestationMaxAgeSec}s` : "not required"}
+                <dd className={t.RequiredAttestation ? "text-forest" : "text-ink-faint"}>
+                  {t.RequiredAttestation ? `within ${t.AttestationMaxAgeSec}s` : "not required"}
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-4">
                 <dt className="text-ink-soft">Self-approval</dt>
-                <dd className={t.blockSelfApproval ? "text-oxblood" : "text-ink-faint"}>
-                  {t.blockSelfApproval ? "blocked" : "allowed"}
+                <dd className={t.BlockSelfApproval ? "text-oxblood" : "text-ink-faint"}>
+                  {t.BlockSelfApproval ? "blocked" : "allowed"}
                 </dd>
               </div>
             </dl>
 
-            {t.privyPolicyId && (
+            {t.PrivyPolicyID && (
               <p className="mt-6 truncate border-t border-rule pt-4 font-mono text-[0.6875rem] text-ink-faint">
-                {t.privyPolicyId}
+                {t.PrivyPolicyID}
               </p>
             )}
           </article>

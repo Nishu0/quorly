@@ -375,6 +375,24 @@ func (s *Server) attest(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) getOrg(w http.ResponseWriter, r *http.Request) {
+	m, err := auth.Require(r.Context())
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	org, err := s.DB.Org(r.Context(), m.OrgID)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"id": org.ID, "name": org.Name, "ensName": org.ENSName,
+		"treasuryAddress": org.TreasuryAddress, "treasuryQuorumId": org.TreasuryQuorumID,
+		"settlementToken": s.Cfg.Chain.SettlementToken, "chainId": s.Cfg.Chain.ID,
+	})
+}
+
 /* ------------------------------------------------------- policies & members */
 
 func (s *Server) listPolicies(w http.ResponseWriter, r *http.Request) {

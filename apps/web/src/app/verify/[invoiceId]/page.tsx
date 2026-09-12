@@ -1,34 +1,25 @@
-import { eq } from "drizzle-orm";
-import { db, invoices } from "@quorly/core/db";
-import { routeInvoice, env } from "@quorly/core";
+import { apiOrNull, type Invoice, type Member, type Routing } from "@/lib/api";
+import { shortAddress } from "@/lib/format";
 import { Amount, Field } from "@/components/quorly/primitives";
 import { SignInButton } from "@/components/quorly/auth";
-import { currentMember } from "@/lib/session";
 import { SelfieCheck } from "./selfie-check";
 
 export const dynamic = "force-dynamic";
 
-export default async function VerifyPage({
-  params,
-}: {
-  params: Promise<{ invoiceId: string }>;
-}) {
+interface Detail {
+  invoice: Invoice;
+  routing: Routing;
+}
+
+export default async function VerifyPage({ params }: { params: Promise<{ invoiceId: string }> }) {
   const { invoiceId } = await params;
 
-  const invoice = await db.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) });
-  if (!invoice) return <Shell title="Invoice not found" />;
-
   // Authority comes from the session, never from the URL. The Slack card still
-  // carries ?member=, but it is a hint about which card was clicked — nothing
-  // more. Trusting it would let anyone holding the link approve as anyone.
-  const approver = await currentMember();
-
-  if (!approver) {
+  // links here directly, but who you are is decided by the Go server.
+  const me = await apiOrNull<Member>("/api/me");
+  if (!me) {
     return (
-      <Shell
-        title="Sign in to approve"
-        body="Approvals are tied to your account, not to this link."
-      >
+      <Shell title="Sign in to approve" body="Approvals are tied to your account, not to this link.">
         <div className="mx-auto mt-8 max-w-xs">
           <SignInButton full />
         </div>
@@ -36,20 +27,21 @@ export default async function VerifyPage({
     );
   }
 
-  const decision = await routeInvoice(invoice);
-  const eligible = decision.eligibleApprovers.some((m) => m.id === approver.id);
+  const detail = await apiOrNull<Detail>(`/api/invoices/${invoiceId}`);
+  if (!detail) return <Shell title="Invoice not found" />;
 
-  if (!eligible) {
-    return (
-      <Shell
-        title="Not your approval"
-        body={`${approver.name ?? approver.email} isn't an approver on the ${decision.policy.name} tier for this invoice.`}
-      />
-    );
-  }
+  const { invoice, routing } = detail;
 
   if (invoice.status !== "pending_approval") {
     return <Shell title={`Already ${invoice.status.replace("_", " ")}`} />;
+  }
+  if (!routing.eligibleApprovers.some((a) => a.id === me.id)) {
+    return (
+      <Shell
+        title="Not your approval"
+        body={`${me.name ?? me.email} isn't an approver on the ${routing.policy} tier for this invoice.`}
+      />
+    );
   }
 
   return (
@@ -68,13 +60,13 @@ export default async function VerifyPage({
 
       <dl className="mt-10 rounded-lg border border-rule bg-card px-6 py-2">
         <Field label="Payee" mono>
-          {invoice.payeeEns ?? invoice.payeeAddress ?? "—"}
+          {invoice.payeeEns ?? shortAddress(invoice.payeeAddress)}
         </Field>
-        <Field label="Policy tier">{decision.policy.name}</Field>
+        <Field label="Policy tier">{routing.policy}</Field>
         <Field label="Approvals needed" mono>
-          {decision.requiredApprovals}
+          {routing.requiredApprovals}
         </Field>
-        <Field label="Approving as">{approver.name ?? approver.email}</Field>
+        <Field label="Approving as">{me.name ?? me.email}</Field>
       </dl>
 
       <section className="mt-10 rounded-lg border border-rule bg-card p-7">
@@ -89,9 +81,9 @@ export default async function VerifyPage({
 
         <SelfieCheck
           invoiceId={invoice.id}
-          memberId={approver.id}
-          appId={env.world.appId()}
-          demo={!env.world.rpId() || !env.world.signingKey()}
+          memberId={me.id}
+          appId={process.env.NEXT_PUBLIC_WORLD_APP_ID ?? ""}
+          demo={routing.requiredAttestation === null}
         />
       </section>
 

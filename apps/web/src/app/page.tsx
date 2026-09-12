@@ -1,31 +1,56 @@
 import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
-import { db, invoices, orgs } from "@quorly/core/db";
+import { api, apiOrNull, type Invoice, type Member } from "@/lib/api";
+import { shortAddress } from "@/lib/format";
 import { Amount, Empty, PageHeader, StatusPill, Stat } from "@/components/quorly/primitives";
+import { SignInButton } from "@/components/quorly/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [list, org] = await Promise.all([
-    db.select().from(invoices).orderBy(desc(invoices.createdAt)).limit(50).catch(() => []),
-    db.query.orgs.findFirst({ where: eq(orgs.id, "org_demo_acme") }).catch(() => undefined),
-  ]);
+  const me = await apiOrNull<Member>("/api/me");
+
+  if (!me) {
+    return (
+      <div className="reveal mx-auto max-w-lg py-16 text-center">
+        <h1 className="display text-[3rem] leading-[1.05]">
+          Money moves when a<br />
+          <em className="italic">live human</em> says so.
+        </h1>
+        <p className="mx-auto mt-6 max-w-md text-[0.9375rem] leading-relaxed text-ink-soft">
+          Slack-native invoice approvals. Above a threshold, the approver passes a live World ID
+          Selfie Check before the payout leaves a treasury wallet governed by a key quorum.
+        </p>
+        <div className="mx-auto mt-10 max-w-xs">
+          <SignInButton full />
+        </div>
+        <p className="mt-8 text-xs text-ink-faint">
+          No workspace yet?{" "}
+          <a href="/slack/install" className="underline underline-offset-2">
+            Add Quorly to Slack
+          </a>
+        </p>
+      </div>
+    );
+  }
+
+  const { invoices } = await api<{ invoices: Invoice[] }>("/api/invoices");
+  const list = invoices ?? [];
 
   const pending = list.filter((i) => i.status === "pending_approval");
-  const outstanding = pending.reduce((sum, i) => sum + Number(i.amount), 0);
+  const outstanding = pending.reduce((sum, i) => sum + i.amount, 0);
   const settled = list.filter((i) => i.status === "paid").length;
 
   return (
     <div>
       <PageHeader
-        eyebrow={org?.name ?? "Treasury"}
+        eyebrow={me.role}
         title={
           <>
             Money moves when a<br />
             <em className="italic">live human</em> says so.
           </>
         }
-        lede="Every invoice below arrived through Slack. Approvals above the fast-lane ceiling require a Selfie Check at the moment of the click, and payouts leave a treasury wallet whose spend rules are enforced inside a secure enclave."
+        lede="Every invoice below arrived through Slack. Approvals above the fast-lane ceiling need a live Selfie Check, and payouts leave a treasury wallet whose spend rules are enforced inside a secure enclave."
       />
 
       <section className="reveal mb-16 grid gap-8 sm:grid-cols-3" style={{ animationDelay: "80ms" }}>
@@ -35,15 +60,7 @@ export default async function Home() {
           hint={`${pending.length} invoice${pending.length === 1 ? "" : "s"}`}
         />
         <Stat label="Settled" value={settled} hint="paid out this period" />
-        <Stat
-          label="Treasury"
-          value={org?.treasuryAddress ? "Live" : "—"}
-          hint={
-            org?.treasuryAddress
-              ? `${org.treasuryAddress.slice(0, 10)}…${org.treasuryAddress.slice(-6)}`
-              : "run setup:treasury"
-          }
-        />
+        <Stat label="Signed in as" value={me.name ?? me.email.split("@")[0]} hint={me.email} />
       </section>
 
       <section className="reveal" style={{ animationDelay: "160ms" }}>
@@ -55,12 +72,7 @@ export default async function Home() {
         {list.length === 0 ? (
           <Empty
             title="Nothing filed yet"
-            body={
-              <>
-                Send the Quorly bot an invoice in Slack, or run{" "}
-                <code className="font-mono text-xs">bun run demo:slack 2400</code>.
-              </>
-            }
+            body="Send the Quorly bot an invoice PDF in Slack and it'll appear here."
           />
         ) : (
           <div className="rule">
@@ -77,6 +89,9 @@ export default async function Home() {
                   <p className="mt-1 truncate font-mono text-xs text-ink-faint">
                     {invoice.number ?? invoice.id}
                     {invoice.payeeEns && <span className="ml-2">→ {invoice.payeeEns}</span>}
+                    {!invoice.payeeEns && invoice.payeeAddress && (
+                      <span className="ml-2">→ {shortAddress(invoice.payeeAddress)}</span>
+                    )}
                   </p>
                 </div>
 
@@ -86,9 +101,6 @@ export default async function Home() {
 
                 <div className="justify-self-end text-right">
                   <Amount value={invoice.amount} currency={invoice.currency} />
-                  <p className="mt-1 text-xs text-ink-faint sm:hidden">
-                    {invoice.status.replace("_", " ")}
-                  </p>
                 </div>
               </Link>
             ))}
