@@ -22,9 +22,13 @@ ARG NEXT_PUBLIC_WORLD_ACTION
 ENV NEXT_PUBLIC_PRIVY_APP_ID=$NEXT_PUBLIC_PRIVY_APP_ID \
     NEXT_PUBLIC_WORLD_APP_ID=$NEXT_PUBLIC_WORLD_APP_ID \
     NEXT_PUBLIC_WORLD_ACTION=$NEXT_PUBLIC_WORLD_ACTION \
-    NEXT_TELEMETRY_DISABLED=1
+    NEXT_TELEMETRY_DISABLED=1 \
+    NODE_OPTIONS=--max-old-space-size=2048
 
 WORKDIR /app/apps/web
+# The deploy box has 2 cores and 3.8GB of RAM. Left uncapped the compile grows
+# past 2GB RSS and starts thrashing swap, which takes the build from four
+# minutes to never finishing; capping the heap makes V8 collect instead.
 RUN bun run build
 
 # ---- runtime --------------------------------------------------------------
