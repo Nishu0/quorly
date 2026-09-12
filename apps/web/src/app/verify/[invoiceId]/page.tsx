@@ -1,31 +1,56 @@
 import { eq } from "drizzle-orm";
-import { db, invoices, members } from "@quorly/core/db";
+import { db, invoices } from "@quorly/core/db";
 import { routeInvoice, env } from "@quorly/core";
 import { Amount, Field } from "@/components/quorly/primitives";
+import { SignInButton } from "@/components/quorly/auth";
+import { currentMember } from "@/lib/session";
 import { SelfieCheck } from "./selfie-check";
 
 export const dynamic = "force-dynamic";
 
 export default async function VerifyPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ invoiceId: string }>;
-  searchParams: Promise<{ member?: string }>;
 }) {
   const { invoiceId } = await params;
-  const { member: memberId } = await searchParams;
 
   const invoice = await db.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) });
   if (!invoice) return <Shell title="Invoice not found" />;
-  if (!memberId) {
-    return <Shell title="Missing approver" body="Open this link from the Slack approval card." />;
+
+  // Authority comes from the session, never from the URL. The Slack card still
+  // carries ?member=, but it is a hint about which card was clicked — nothing
+  // more. Trusting it would let anyone holding the link approve as anyone.
+  const approver = await currentMember();
+
+  if (!approver) {
+    return (
+      <Shell
+        title="Sign in to approve"
+        body="Approvals are tied to your account, not to this link."
+      >
+        <div className="mx-auto mt-8 max-w-xs">
+          <SignInButton full />
+        </div>
+      </Shell>
+    );
   }
 
-  const approver = await db.query.members.findFirst({ where: eq(members.id, memberId) });
-  if (!approver) return <Shell title="Unknown approver" />;
-
   const decision = await routeInvoice(invoice);
+  const eligible = decision.eligibleApprovers.some((m) => m.id === approver.id);
+
+  if (!eligible) {
+    return (
+      <Shell
+        title="Not your approval"
+        body={`${approver.name ?? approver.email} isn't an approver on the ${decision.policy.name} tier for this invoice.`}
+      />
+    );
+  }
+
+  if (invoice.status !== "pending_approval") {
+    return <Shell title={`Already ${invoice.status.replace("_", " ")}`} />;
+  }
 
   return (
     <div className="reveal mx-auto max-w-lg">
@@ -79,11 +104,20 @@ export default async function VerifyPage({
   );
 }
 
-function Shell({ title, body }: { title: string; body?: string }) {
+function Shell({
+  title,
+  body,
+  children,
+}: {
+  title: string;
+  body?: string;
+  children?: React.ReactNode;
+}) {
   return (
     <div className="mx-auto max-w-md py-20 text-center">
       <h1 className="display text-3xl">{title}</h1>
-      {body && <p className="mt-3 text-sm text-ink-soft">{body}</p>}
+      {body && <p className="mx-auto mt-3 max-w-sm text-sm text-ink-soft">{body}</p>}
+      {children}
     </div>
   );
 }

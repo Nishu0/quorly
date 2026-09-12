@@ -206,6 +206,17 @@ export class PrivyClient {
     }, { sign: true });
   }
 
+  /* --------------------------------- users -------------------------------- */
+
+  /**
+   * Fetch a user by their Privy DID. We read the email from here rather than
+   * from the browser: a client-supplied email would let anyone claim anyone
+   * else's seat on the roster.
+   */
+  getUser(userId: string): Promise<PrivyUser> {
+    return this.call("GET", `/v1/users/${userId}`);
+  }
+
   /* -------------------------------- intents ------------------------------- */
 
   /**
@@ -252,6 +263,37 @@ export class PrivyClient {
   getIntent(intentId: string): Promise<PrivyIntent> {
     return this.call("GET", `/v1/intents/${intentId}`);
   }
+}
+
+export interface PrivyUser {
+  id: string;
+  linked_accounts?: {
+    type: string;
+    address?: string;
+    email?: string;
+    name?: string;
+    wallet_client_type?: string;
+    chain_type?: string;
+  }[];
+}
+
+/** The verified email on a Privy user, if they have one. */
+export function primaryEmail(user: PrivyUser): string | null {
+  for (const a of user.linked_accounts ?? []) {
+    if (a.type === "email" && a.address) return a.address.toLowerCase();
+    if (a.type === "google_oauth" && a.email) return a.email.toLowerCase();
+  }
+  return null;
+}
+
+/** The user's Privy-managed embedded wallet, which holds their quorum key. */
+export function embeddedWallet(user: PrivyUser): { address: string } | null {
+  for (const a of user.linked_accounts ?? []) {
+    if (a.type === "wallet" && a.wallet_client_type === "privy" && a.address) {
+      return { address: a.address };
+    }
+  }
+  return null;
 }
 
 export class PrivyError extends Error {

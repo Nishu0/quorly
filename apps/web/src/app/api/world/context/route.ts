@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { signRequest } from "@worldcoin/idkit-server";
 import { eq } from "drizzle-orm";
 import { db, invoices } from "@quorly/core/db";
-import { createChallenge, env, CHALLENGE_TTL_SEC } from "@quorly/core";
+import { createChallenge, env, CHALLENGE_TTL_SEC, routeInvoice } from "@quorly/core";
+import { currentMember } from "@/lib/session";
 
 /**
  * Mints an rp_context for one approval.
@@ -12,10 +13,10 @@ import { createChallenge, env, CHALLENGE_TTL_SEC } from "@quorly/core";
  * approver — so the proof that comes back can only belong to this approval.
  */
 export async function POST(req: Request) {
-  const { invoiceId, memberId } = (await req.json()) as {
-    invoiceId: string;
-    memberId: string;
-  };
+  const { invoiceId } = (await req.json()) as { invoiceId: string };
+
+  const approver = await currentMember();
+  if (!approver) return NextResponse.json({ error: "not signed in" }, { status: 401 });
 
   const invoice = await db.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) });
   if (!invoice) {
@@ -23,6 +24,12 @@ export async function POST(req: Request) {
   }
   if (invoice.status !== "pending_approval") {
     return NextResponse.json({ error: `invoice is ${invoice.status}` }, { status: 409 });
+  }
+
+  // A challenge is only worth minting for someone who could actually approve.
+  const decision = await routeInvoice(invoice);
+  if (!decision.eligibleApprovers.some((m) => m.id === approver.id)) {
+    return NextResponse.json({ error: "not an approver on this invoice" }, { status: 403 });
   }
 
   const signingKey = env.world.signingKey();
@@ -40,7 +47,7 @@ export async function POST(req: Request) {
 
   await createChallenge({
     invoiceId,
-    memberId,
+    memberId: approver.id,
     nonce,
     action,
     expiresAt: new Date(expiresAt * 1000),
@@ -55,7 +62,7 @@ export async function POST(req: Request) {
       signature: sig,
     },
     action,
-    signal: `${invoiceId}:${memberId}`,
+    signal: `${invoiceId}:${approver.id}`,
     environment: env.world.environment(),
   });
 }

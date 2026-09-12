@@ -27,7 +27,7 @@ export function SelfieCheck(props: {
     const res = await fetch("/api/attest", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ invoiceId: props.invoiceId, memberId: props.memberId, result }),
+      body: JSON.stringify({ invoiceId: props.invoiceId, result }),
     });
     const json = await res.json();
     if (!res.ok || !json.ok) throw new Error(json.error ?? "Verification failed");
@@ -48,7 +48,7 @@ export function SelfieCheck(props: {
       const res = await fetch("/api/world/context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoiceId: props.invoiceId, memberId: props.memberId }),
+        body: JSON.stringify({ invoiceId: props.invoiceId }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Could not start verification");

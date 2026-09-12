@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Instrument_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/google";
+import { Providers } from "@/components/providers";
+import { SignInButton } from "@/components/quorly/auth";
 import "./globals.css";
 
 const sans = Instrument_Sans({
@@ -40,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${sans.variable} ${serif.variable} ${mono.variable}`}>
       <body className="min-h-screen">
+        <Providers>
         <div className="relative z-10">
           <header className="sticky top-0 z-20 border-b border-rule bg-background/80 backdrop-blur-md">
             <div className="mx-auto flex h-16 max-w-6xl items-center gap-10 px-6 lg:px-10">
@@ -63,9 +66,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 ))}
               </nav>
 
-              <div className="ml-auto hidden items-center gap-2 sm:flex">
-                <span className="size-1.5 rounded-full bg-forest" />
-                <span className="label !text-ink-soft">Base Sepolia</span>
+              <div className="ml-auto flex items-center gap-5">
+                <span className="hidden items-center gap-2 lg:flex">
+                  <span className="size-1.5 rounded-full bg-forest" />
+                  <span className="label !text-ink-soft">Base Sepolia</span>
+                </span>
+                <SignInButton />
               </div>
             </div>
           </header>
@@ -81,6 +87,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </footer>
         </div>
+        </Providers>
       </body>
     </html>
   );

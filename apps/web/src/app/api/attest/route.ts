@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db, invoices } from "@quorly/core/db";
 import { recordAttestation, decide, executePayout, type IDKitResult } from "@quorly/core";
+import { currentMember } from "@/lib/session";
 
 /**
  * One endpoint does the whole checkpoint: consume the single-use challenge,
@@ -10,18 +11,19 @@ import { recordAttestation, decide, executePayout, type IDKitResult } from "@quo
  * the approval isn't.
  */
 export async function POST(req: Request) {
-  const body = (await req.json()) as {
-    invoiceId: string;
-    memberId: string;
-    result: IDKitResult;
-  };
+  const body = (await req.json()) as { invoiceId: string; result: IDKitResult };
+
+  // Who is approving is decided here, from a verified session — never from the
+  // request body, which the caller controls.
+  const approver = await currentMember();
+  if (!approver) return NextResponse.json({ ok: false, error: "not signed in" }, { status: 401 });
 
   const invoice = await db.query.invoices.findFirst({ where: eq(invoices.id, body.invoiceId) });
   if (!invoice) return NextResponse.json({ ok: false, error: "invoice not found" }, { status: 404 });
 
   const att = await recordAttestation({
     orgId: invoice.orgId,
-    memberId: body.memberId,
+    memberId: approver.id,
     invoiceId: body.invoiceId,
     result: body.result,
   });
@@ -42,7 +44,7 @@ export async function POST(req: Request) {
 
   const outcome = await decide({
     invoiceId: body.invoiceId,
-    approverId: body.memberId,
+    approverId: approver.id,
     decision: "approve",
   });
 
