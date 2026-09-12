@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { SignInButton } from "@/components/quorly/auth";
+import { IconLifebuoy } from "@tabler/icons-react";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
@@ -27,12 +28,17 @@ export function SiteHeader() {
         <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
         <h1 className="text-base font-medium">{title}</h1>
 
-        <div className="ml-auto flex items-center gap-4">
-          <span className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
-            <span className="size-1.5 rounded-full bg-forest" />
-            Base Sepolia
-          </span>
-          <SignInButton />
+        <div className="ml-auto flex items-center">
+          {/* Identity, wallet and sign-out live in the sidebar profile menu, so
+              the only thing this corner still owes anyone is a way out. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            render={<a href="mailto:itsnisargthakkar@gmail.com" />}
+          >
+            <IconLifebuoy />
+            Support
+          </Button>
         </div>
       </div>
     </header>

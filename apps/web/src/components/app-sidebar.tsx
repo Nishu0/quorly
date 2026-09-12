@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BrandMark } from "@/components/quorly/brand-mark";
+import { NavUser } from "@/components/nav-user";
+import type { Member } from "@/lib/api";
 import {
   IconCoin,
   IconDroplet,
   IconFileText,
   IconLayoutDashboard,
-  IconLifebuoy,
   IconScale,
   IconUsers,
 } from "@tabler/icons-react";
@@ -39,7 +40,10 @@ const GOVERN = [
 
 const TOOLS = [{ title: "Faucet", url: "/dashboard/faucet", icon: IconDroplet }];
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  member,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & { member: Member }) {
   const pathname = usePathname();
 
   // "/dashboard" is a prefix of every other route, so it needs exact matching.
@@ -90,14 +94,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton render={<a href="mailto:itsnisargthakkar@gmail.com" />}>
-              <IconLifebuoy />
-              <span>Support</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <NavUser member={member} />
       </SidebarFooter>
     </Sidebar>
   );

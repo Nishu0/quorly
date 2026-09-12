@@ -15,7 +15,10 @@ export function BrandMark({
   className?: string;
 }) {
   const mark = size === "sm" ? "size-5" : "size-8";
-  const text = size === "sm" ? "text-[0.6875rem]" : "text-[0.8125rem]";
+  // Silkscreen is a bitmap face on an 8px grid and .pixel turns font smoothing
+  // off, so only multiples of 8px render with even stems — 11px and 13px were
+  // both off-grid, which is half of why the wordmark read as weak.
+  const text = size === "sm" ? "text-base" : "text-2xl";
   const color = tone === "light" ? "text-white" : "text-[var(--panel-ink,#0b1f31)]";
 
   return (

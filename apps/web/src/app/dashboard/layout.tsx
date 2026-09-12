@@ -20,7 +20,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
+      <AppSidebar variant="inset" member={me} />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6">{children}</div>
