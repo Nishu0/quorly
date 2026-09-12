@@ -52,6 +52,16 @@ services:
       # through this path, so the Privy cookie stays same-origin.
       QUORLY_API_URL: http://api:8080
       APP_URL: https://${SITE_DOMAIN}
+      # Named one by one rather than env_file: .env, because that file also
+      # holds the Privy app secret, the Slack signing secret, the World signing
+      # key and the database URL — none of which Next needs, and all of which
+      # would then sit in the process that serves the public pages. The faucet
+      # route signs its own drip, so the deployer key does have to be here.
+      QUSD_ADDRESS: ${QUSD_ADDRESS:?set QUSD_ADDRESS}
+      RPC_URL: ${RPC_URL:-https://sepolia.base.org}
+      # Optional: without it the faucet route returns null and declines to
+      # drip, which is a better failure than refusing to boot the whole site.
+      DEPLOYER_PRIVATE_KEY: ${DEPLOYER_PRIVATE_KEY:-}
     expose:
       - "3000"
     depends_on:
