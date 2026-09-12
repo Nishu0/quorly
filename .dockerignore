@@ -1,0 +1,13 @@
+.git
+.env
+*.pem
+node_modules
+**/node_modules
+**/.next
+apps/web/.next
+contracts/out
+contracts/cache
+contracts/broadcast
+contracts/lib
+server/tmp
+*.log
