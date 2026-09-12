@@ -45,7 +45,14 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("GET /api/org", s.getOrg)
 	mux.HandleFunc("GET /api/policies", s.listPolicies)
+	mux.HandleFunc("POST /api/policies", s.createPolicy)
+	mux.HandleFunc("PATCH /api/policies/{id}", s.updatePolicy)
+	mux.HandleFunc("DELETE /api/policies/{id}", s.deletePolicy)
+
 	mux.HandleFunc("GET /api/members", s.listMembers)
+	mux.HandleFunc("POST /api/members", s.inviteMember)
+	mux.HandleFunc("PATCH /api/members/{id}", s.setMemberRole)
+	mux.HandleFunc("DELETE /api/members/{id}", s.removeMember)
 
 	mux.HandleFunc("POST /api/world/context", s.worldContext)
 	mux.HandleFunc("POST /api/attest", s.attest)
@@ -72,7 +79,7 @@ func (s *Server) cors(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Origin", s.Cfg.AppURL)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Vary", "Origin")
 
 		if r.Method == http.MethodOptions {

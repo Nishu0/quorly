@@ -60,7 +60,14 @@ type Member struct {
 	ENSSubname         *string
 	WorldNullifier     *string
 	CreatedAt          time.Time
+	InvitedBy          *string
+	InvitedAt          *time.Time
 }
+
+// Pending reports whether an invited member has yet to sign in and claim their
+// seat. The roster shows these differently — an unclaimed approver can't
+// actually approve anything.
+func (m Member) Pending() bool { return m.PrivyUserID == nil }
 
 func (m Member) Display() string {
 	if m.Name != nil && *m.Name != "" {
@@ -84,6 +91,8 @@ type Policy struct {
 	BlockSelfApproval    bool
 	PrivyPolicyID        *string
 	CreatedAt            time.Time
+	UpdatedAt            time.Time
+	UpdatedBy            *string
 }
 
 type Invoice struct {

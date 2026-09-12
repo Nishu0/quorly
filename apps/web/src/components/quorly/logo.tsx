@@ -15,7 +15,7 @@ function findLogo(): { src: string; width: number; height: number } | null {
   for (const dir of [PUBLIC_DIR, FALLBACK_DIR]) {
     for (const name of ["logo.svg", "logo.png"]) {
       if (existsSync(join(dir, name))) {
-        return { src: `/${name}`, width: 120, height: 32 };
+        return { src: `/${name}`, width: 200, height: 200 };
       }
     }
   }
@@ -28,14 +28,18 @@ export function Logo({ href = "/" }: { href?: string }) {
   return (
     <Link href={href} className="group flex shrink-0 items-center" aria-label="Quorly">
       {logo ? (
-        <Image
-          src={logo.src}
-          alt="Quorly"
-          width={logo.width}
-          height={logo.height}
-          priority
-          className="h-7 w-auto transition-opacity duration-200 group-hover:opacity-80"
-        />
+        // A square mark reads better paired with the wordmark than alone.
+        <span className="flex items-center gap-2.5">
+          <Image
+            src={logo.src}
+            alt=""
+            width={logo.width}
+            height={logo.height}
+            priority
+            className="size-7 rounded-md transition-transform duration-300 group-hover:scale-105"
+          />
+          <span className="display text-xl leading-none">Quorly</span>
+        </span>
       ) : (
         <span className="flex items-baseline gap-[3px]">
           <span className="display text-xl leading-none">Quorly</span>

@@ -57,13 +57,14 @@ func (s *Store) SetTreasury(ctx context.Context, orgID, walletID, address, quoru
 /* ------------------------------------------------------------------ members */
 
 const memberCols = `id, org_id, email, name, slack_user_id, role, privy_user_id,
-	wallet_id, wallet_address, authorization_key_id, ens_subname, world_nullifier, created_at`
+	wallet_id, wallet_address, authorization_key_id, ens_subname, world_nullifier,
+	created_at, invited_by, invited_at`
 
 func scanMember(row pgx.Row) (domain.Member, error) {
 	var m domain.Member
 	err := row.Scan(&m.ID, &m.OrgID, &m.Email, &m.Name, &m.SlackUserID, &m.Role,
 		&m.PrivyUserID, &m.WalletID, &m.WalletAddress, &m.AuthorizationKeyID,
-		&m.ENSSubname, &m.WorldNullifier, &m.CreatedAt)
+		&m.ENSSubname, &m.WorldNullifier, &m.CreatedAt, &m.InvitedBy, &m.InvitedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return m, ErrNotFound
 	}
@@ -135,7 +136,7 @@ func (s *Store) Policies(ctx context.Context, orgID string) ([]domain.Policy, er
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, org_id, name, active, max_amount::text, currency, required_approvals,
 		       approver_roles, required_attestation, attestation_max_age_sec,
-		       block_self_approval, privy_policy_id, created_at
+		       block_self_approval, privy_policy_id, created_at, updated_at, updated_by
 		FROM policies WHERE org_id=$1 ORDER BY max_amount`, orgID)
 	if err != nil {
 		return nil, err
@@ -152,7 +153,8 @@ func (s *Store) Policies(ctx context.Context, orgID string) ([]domain.Policy, er
 		)
 		if err := rows.Scan(&p.ID, &p.OrgID, &p.Name, &p.Active, &amountStr, &p.Currency,
 			&p.RequiredApprovals, &rolesRaw, &attest, &p.AttestationMaxAgeSec,
-			&p.BlockSelfApproval, &p.PrivyPolicyID, &p.CreatedAt); err != nil {
+			&p.BlockSelfApproval, &p.PrivyPolicyID, &p.CreatedAt,
+			&p.UpdatedAt, &p.UpdatedBy); err != nil {
 			return nil, err
 		}
 
@@ -468,4 +470,129 @@ func (s *Store) Installation(ctx context.Context, teamID string) (domain.SlackIn
 		return in, ErrNotFound
 	}
 	return in, err
+}
+
+/* ------------------------------------------------------- policy management */
+
+// UpdatePolicy writes the fields an owner can change and stamps who did it.
+// Everything else about a tier — its id, its org — is not editable by design.
+func (s *Store) UpdatePolicy(ctx context.Context, p domain.Policy, actorID string) error {
+	roles := make([]string, 0, len(p.ApproverRoles))
+	for _, r := range p.ApproverRoles {
+		roles = append(roles, string(r))
+	}
+	rolesJSON, err := json.Marshal(roles)
+	if err != nil {
+		return err
+	}
+
+	var attest *string
+	if p.RequiredAttestation != nil {
+		v := string(*p.RequiredAttestation)
+		attest = &v
+	}
+
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE policies SET
+			name = $3, active = $4, max_amount = $5, required_approvals = $6,
+			approver_roles = $7, required_attestation = $8,
+			attestation_max_age_sec = $9, block_self_approval = $10,
+			updated_at = now(), updated_by = $11
+		WHERE id = $1 AND org_id = $2`,
+		p.ID, p.OrgID, p.Name, p.Active,
+		strconv.FormatFloat(p.MaxAmount, 'f', -1, 64), p.RequiredApprovals,
+		rolesJSON, attest, p.AttestationMaxAgeSec, p.BlockSelfApproval, actorID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// DeletePolicy refuses to remove the last active tier: an org with no tiers has
+// no way to route an invoice, and every submission would fail at the gate.
+func (s *Store) DeletePolicy(ctx context.Context, orgID, policyID string) error {
+	return s.Tx(ctx, func(tx pgx.Tx) error {
+		var remaining int
+		if err := tx.QueryRow(ctx,
+			`SELECT count(*) FROM policies WHERE org_id=$1 AND id <> $2 AND active`,
+			orgID, policyID).Scan(&remaining); err != nil {
+			return err
+		}
+		if remaining == 0 {
+			return ErrLastPolicy
+		}
+
+		tag, err := tx.Exec(ctx, `DELETE FROM policies WHERE id=$1 AND org_id=$2`, policyID, orgID)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
+}
+
+var (
+	ErrLastPolicy      = errors.New("an org needs at least one active policy tier")
+	ErrPolicyInUse     = errors.New("policy is referenced by an invoice")
+	ErrAlreadyOnRoster = errors.New("that email is already on the roster")
+)
+
+/* ------------------------------------------------------- member management */
+
+// InviteMember adds someone by email. They claim the seat by signing in, which
+// is why the row exists before they ever have.
+func (s *Store) InviteMember(ctx context.Context, m domain.Member, actorID string) (domain.Member, error) {
+	row := s.pool.QueryRow(ctx, `
+		INSERT INTO members (id, org_id, email, name, role, invited_by, invited_at)
+		VALUES ($1,$2,lower($3),$4,$5,$6, now())
+		ON CONFLICT (org_id, email) DO NOTHING
+		RETURNING `+memberCols,
+		m.ID, m.OrgID, m.Email, m.Name, string(m.Role), actorID)
+
+	member, err := scanMember(row)
+	if errors.Is(err, ErrNotFound) {
+		return domain.Member{}, ErrAlreadyOnRoster
+	}
+	return member, err
+}
+
+// RemoveMember deletes a seat. Invoices they submitted keep their reference, so
+// the audit trail stays intact — the database refuses the delete if so.
+func (s *Store) RemoveMember(ctx context.Context, orgID, memberID string) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM members WHERE id=$1 AND org_id=$2`, memberID, orgID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// SetRole changes what someone may do. Scoped by org so a member id from
+// another tenant can't be targeted.
+func (s *Store) SetRole(ctx context.Context, orgID, memberID string, role domain.Role) error {
+	tag, err := s.pool.Exec(ctx,
+		`UPDATE members SET role=$3 WHERE id=$1 AND org_id=$2`, memberID, orgID, string(role))
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// CountOwners guards the last-owner case: an org with no owner can never have
+// its policy changed again.
+func (s *Store) CountOwners(ctx context.Context, orgID string) (int, error) {
+	var n int
+	err := s.pool.QueryRow(ctx,
+		`SELECT count(*) FROM members WHERE org_id=$1 AND role='owner'`, orgID).Scan(&n)
+	return n, err
 }

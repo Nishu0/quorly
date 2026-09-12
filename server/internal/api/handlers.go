@@ -434,7 +434,7 @@ func memberView(m domain.Member) map[string]any {
 	return map[string]any{
 		"id": m.ID, "orgId": m.OrgID, "email": m.Email, "name": m.Name,
 		"role": m.Role, "ensSubname": m.ENSSubname, "walletAddress": m.WalletAddress,
-		"slackUserId": m.SlackUserID,
+		"slackUserId": m.SlackUserID, "pending": m.Pending(), "createdAt": m.CreatedAt,
 	}
 }
 
