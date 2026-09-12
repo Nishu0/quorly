@@ -54,16 +54,14 @@ export function Landing() {
             <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <a
                 href="/slack/install"
-                className="inline-flex w-full items-center justify-center gap-2.5 border border-[var(--panel-line)] bg-[var(--panel-accent)] px-6 py-3.5 text-sm font-medium text-white transition-transform duration-150 hover:-translate-y-px active:translate-y-0 sm:w-auto"
-                style={{ borderRadius: 3, boxShadow: "3px 3px 0 0 var(--panel-line)" }}
+                className="navcta inline-flex w-full items-center justify-center gap-2.5 px-6 py-3.5 text-sm font-medium sm:w-auto"
               >
                 <SlackMark />
                 Add to Slack
               </a>
               <Link
                 href="/login"
-                className="inline-flex w-full items-center justify-center border border-[var(--panel-line)] bg-[var(--panel)] px-6 py-3.5 text-sm font-medium transition-transform duration-150 hover:-translate-y-px active:translate-y-0 sm:w-auto"
-                style={{ borderRadius: 3, boxShadow: "3px 3px 0 0 var(--panel-line)" }}
+                className="navchip inline-flex w-full items-center justify-center px-6 py-3.5 text-sm font-medium text-[var(--panel-ink)] transition-transform duration-150 hover:-translate-y-px active:translate-y-0 sm:w-auto"
               >
                 Sign in
               </Link>
@@ -103,7 +101,7 @@ export function Landing() {
           {FEATURES.map((f) => (
             <article key={f.n} className="panel-flat p-7">
               <div className="mb-4 flex items-center gap-2.5">
-                <span className="panel-accent pixel grid size-6 place-items-center border border-[var(--panel-line)] text-[0.625rem]">
+                <span className="pixel grid size-6 place-items-center rounded-md border border-white/50 bg-white/35 text-[0.625rem] text-[var(--panel-ink)]">
                   {f.n}
                 </span>
                 <span className="dither-rule flex-1" />

@@ -14,7 +14,7 @@ export function Nav() {
   const pathname = usePathname();
 
   return (
-    <nav className="titlebar-pill hidden items-center gap-1 px-1.5 py-1 md:flex">
+    <nav className="navpill hidden items-center gap-0.5 px-1.5 py-1 md:flex">
       {LINKS.map((l) => {
         // "/" is a prefix of everything, so it needs an exact match.
         const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
@@ -24,7 +24,7 @@ export function Nav() {
             href={l.href}
             data-active={active}
             aria-current={active ? "page" : undefined}
-            className="titlebar-link px-3.5 py-1.5 text-[0.8125rem]"
+            className="navlink px-4 py-1.5 text-[0.8125rem]"
           >
             {l.label}
           </Link>

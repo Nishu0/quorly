@@ -13,7 +13,7 @@ export function LegalPage({
     <article className="dithered mx-auto max-w-2xl">
       <Link
         href="/"
-        className="mb-10 inline-block text-sm text-ink-soft transition-colors hover:text-foreground"
+        className="mb-10 inline-block text-sm panel-muted transition-colors hover:opacity-80"
       >
         ← Home
       </Link>
@@ -29,7 +29,7 @@ export function LegalPage({
         </div>
       </div>
 
-      <div className="panel-flat mt-6 border-[#a15c00]/50 bg-[#fdf4e3] p-5">
+      <div className="mt-6 rounded-2xl border border-white/55 bg-[#fdf4e3]/85 p-5 backdrop-blur-md">
         <p className="text-sm leading-relaxed text-[#8a5a00]">
           <strong>Quorly is a hackathon project</strong>, built for ETHOnline 2026. It runs on test
           networks with test tokens, it is not a licensed financial service, and it carries no
@@ -45,7 +45,7 @@ export function LegalPage({
         Questions about any of this?{" "}
         <a
           href="mailto:itsnisargthakkar@gmail.com"
-          className="underline underline-offset-4 hover:text-foreground"
+          className="underline underline-offset-4 hover:opacity-80"
         >
           itsnisargthakkar@gmail.com
         </a>

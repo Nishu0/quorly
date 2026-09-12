@@ -28,27 +28,27 @@ export function SiteChrome({
 
   return (
     <div className="relative z-10 flex min-h-screen flex-col">
-      <header className="sticky top-0 z-30">
-        <div className="titlebar-dither" />
-        <div className="titlebar">
-          <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-5 lg:px-8">
-            <Link href="/" className="group flex shrink-0 items-center gap-2.5">
-              {/* Passed in bare — this Link is the anchor. */}
-              {logo}
-              <span className="pixel hidden text-sm leading-none text-white sm:block">QUORLY</span>
-            </Link>
+      <header className="sticky top-0 z-30 px-5 pt-4 lg:px-8">
+        <div className="mx-auto flex max-w-6xl items-center gap-4">
+          <Link
+            href="/"
+            className="navchip group flex shrink-0 items-center gap-2.5 py-1.5 pl-1.5 pr-4"
+          >
+            {logo}
+            <span className="pixel hidden text-[0.8125rem] leading-none text-[#0b1f31] sm:block">
+              QUORLY
+            </span>
+          </Link>
 
-            <div className="flex flex-1 justify-center">
-              <Nav />
-            </div>
-
-            <AuthButtons />
+          <div className="flex flex-1 justify-center">
+            <Nav />
           </div>
+
+          <AuthButtons />
         </div>
-        <div className="titlebar-dither rotate-180" />
       </header>
 
-      <main className="mx-auto w-full max-w-6xl grow px-6 py-14 lg:px-10 lg:py-16">{children}</main>
+      <main className="mx-auto w-full max-w-6xl grow px-6 pb-14 pt-10 lg:px-10 lg:pb-16 lg:pt-12">{children}</main>
 
       <footer className="mx-auto w-full max-w-6xl px-6 pb-14 lg:px-10">
         <div className="dithered">
@@ -89,17 +89,14 @@ function AuthButtons() {
   const signedIn = ready && authenticated;
 
   return (
-    <div className="flex shrink-0 items-center gap-2.5">
+    <div className="flex shrink-0 items-center gap-2">
       <Link
         href={signedIn ? "/dashboard" : "/login"}
-        className="hidden px-3 py-1.5 text-[0.8125rem] text-[var(--bar-dim)] transition-colors hover:text-white sm:block"
+        className="navchip navlink hidden px-4 py-2 text-[0.8125rem] sm:block"
       >
         {signedIn ? "Dashboard" : "Log in"}
       </Link>
-      <a
-        href="/slack/install"
-        className="titlebar-btn bg-white px-4 py-2 text-[0.8125rem] font-medium text-[#0d1f30]"
-      >
+      <a href="/slack/install" className="navcta px-4 py-2 text-[0.8125rem] font-medium">
         Add to Slack
       </a>
     </div>

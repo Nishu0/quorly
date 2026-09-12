@@ -60,7 +60,7 @@ export default function TermsPage() {
           Reach the author at{" "}
           <a
             href="mailto:itsnisargthakkar@gmail.com"
-            className="underline underline-offset-4 hover:text-foreground"
+            className="underline underline-offset-4 hover:opacity-80"
           >
             itsnisargthakkar@gmail.com
           </a>

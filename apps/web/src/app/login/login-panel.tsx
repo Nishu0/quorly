@@ -24,7 +24,7 @@ export function LoginPanel() {
         <p className="rounded-lg bg-oxblood-soft p-4 text-sm text-oxblood">{sync.message}</p>
         <button
           onClick={logout}
-          className="text-sm text-ink-soft underline underline-offset-4 hover:text-foreground"
+          className="text-sm panel-muted underline underline-offset-4 hover:opacity-80"
         >
           Try a different account
         </button>
@@ -57,7 +57,7 @@ export function LoginPanel() {
         Continue with a wallet
       </button>
 
-      <p className="pt-1 text-xs leading-relaxed text-ink-faint">
+      <p className="pt-1 text-xs leading-relaxed panel-faint">
         Privy creates an embedded wallet on first sign-in. That wallet is where your authorization
         key lives — it&apos;s your seat in the quorum, and signing in never moves funds.
       </p>

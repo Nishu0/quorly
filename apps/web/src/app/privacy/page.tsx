@@ -20,7 +20,7 @@ export default function PrivacyPage() {
 
       <Section title="What we deliberately do not store">
         <p>
-          <strong className="text-foreground">No biometric data, ever.</strong> The Selfie Check
+          <strong className="text-[var(--panel-ink)]">No biometric data, ever.</strong> The Selfie Check
           happens entirely inside World App on your own device. Quorly never sees your face, an
           image of it, or any template derived from it. What reaches our server is a cryptographic
           proof and a nullifier — an opaque identifier that says a check passed, and nothing about
@@ -60,7 +60,7 @@ export default function PrivacyPage() {
           Questions, corrections, or deletion requests:{" "}
           <a
             href="mailto:itsnisargthakkar@gmail.com"
-            className="underline underline-offset-4 hover:text-foreground"
+            className="underline underline-offset-4 hover:opacity-80"
           >
             itsnisargthakkar@gmail.com
           </a>

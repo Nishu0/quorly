@@ -35,7 +35,7 @@ export default async function LoginPage() {
 
         <div className="panel max-w-md p-8">
           <h1 className="display text-[2.75rem] leading-[1.05]">Welcome to Quorly</h1>
-          <p className="mt-5 text-[0.9375rem] leading-relaxed text-ink-soft">
+          <p className="mt-5 text-[0.9375rem] leading-relaxed panel-muted">
             Quorly is the approval checkpoint for company money: policy decides who signs, a live
             Selfie Check proves they were there, and a key quorum releases the payment.
           </p>
@@ -44,10 +44,10 @@ export default async function LoginPage() {
             <LoginPanel />
           </div>
 
-          <p className="mt-6 max-w-sm text-xs leading-relaxed text-ink-faint">
+          <p className="mt-6 max-w-sm text-xs leading-relaxed panel-faint">
             Signing in matches you to a seat on your organisation&apos;s roster by email. If nobody
             has invited you yet, ask an owner — or{" "}
-            <a href="/slack/install" className="underline underline-offset-4 hover:text-foreground">
+            <a href="/slack/install" className="underline underline-offset-4 hover:opacity-80">
               add Quorly to your Slack workspace
             </a>{" "}
             to create one.
@@ -57,30 +57,30 @@ export default async function LoginPage() {
         <div className="panel-flat panel-faint space-y-3 p-5 text-xs">
           <p>
             By continuing, I agree to Quorly&apos;s{" "}
-            <Link href="/terms" className="underline underline-offset-4 hover:text-foreground">
+            <Link href="/terms" className="underline underline-offset-4 hover:opacity-80">
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link href="/privacy" className="underline underline-offset-4 hover:text-foreground">
+            <Link href="/privacy" className="underline underline-offset-4 hover:opacity-80">
               Privacy Policy
             </Link>
             .
           </p>
           <div className="flex gap-5">
-            <Link href="/terms" className="hover:text-foreground">
+            <Link href="/terms" className="hover:opacity-80">
               Terms
             </Link>
-            <Link href="/privacy" className="hover:text-foreground">
+            <Link href="/privacy" className="hover:opacity-80">
               Privacy
             </Link>
-            <a href="mailto:itsnisargthakkar@gmail.com" className="hover:text-foreground">
+            <a href="mailto:itsnisargthakkar@gmail.com" className="hover:opacity-80">
               Support
             </a>
           </div>
         </div>
       </div>
 
-      <div className="panel relative hidden overflow-hidden bg-[#5FA6E5] lg:block">
+      <div className="panel relative hidden overflow-hidden lg:block">
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">
           {hasLogo() && (
             <Image
@@ -91,7 +91,7 @@ export default async function LoginPage() {
               className="size-14 rounded-xl opacity-90"
             />
           )}
-          <p className="pixel text-[0.6875rem] uppercase tracking-[0.24em] text-white">
+          <p className="pixel text-[0.6875rem] uppercase tracking-[0.24em] text-[var(--panel-ink)]">
             Route. Prove. Pay.
           </p>
         </div>
@@ -101,7 +101,7 @@ export default async function LoginPage() {
           aria-hidden
           className="pointer-events-none absolute left-1/2 top-1/2 size-[36rem] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.18]"
           style={{
-            background: "radial-gradient(circle, #ffffff 0%, transparent 62%)",
+            background: "radial-gradient(circle, #ffffff 0%, transparent 60%)",
           }}
         />
       </div>

@@ -63,7 +63,7 @@ export function ProblemModals() {
             className="panel group p-6 text-left transition-transform duration-150 hover:-translate-y-0.5"
           >
             <div className="mb-4 flex items-center gap-2.5">
-              <span className="panel-accent pixel grid size-6 place-items-center border border-[var(--panel-line)] text-[0.625rem]">
+              <span className="pixel grid size-6 place-items-center rounded-md border border-white/50 bg-white/35 text-[0.625rem] text-[var(--panel-ink)]">
                 {p.k}
               </span>
               <span className="dither-rule flex-1" />
@@ -83,7 +83,7 @@ export function ProblemModals() {
       <Dialog open={open !== null} onOpenChange={(o) => !o && setOpen(null)}>
         <DialogContent
           showCloseButton={false}
-          className="dithered max-w-lg gap-0 overflow-hidden border-[var(--panel-line)] bg-[var(--panel)] p-0 shadow-[6px_6px_0_0_rgba(26,79,122,0.35)] sm:rounded-[3px]"
+          className="dithered panel max-w-lg gap-0 overflow-hidden border-white/55 p-0 sm:rounded-[18px]"
         >
           {active && (
             <>
@@ -95,7 +95,7 @@ export function ProblemModals() {
                 <button
                   onClick={() => setOpen(null)}
                   aria-label="Close"
-                  className="titlebar-btn pixel bg-[var(--panel)] px-2 py-0.5 text-[0.625rem] text-[var(--panel-ink)]"
+                  className="pixel rounded-md border border-white/50 bg-white/30 px-2 py-0.5 text-[0.625rem] text-white transition-colors hover:bg-white/50"
                 >
                   X
                 </button>

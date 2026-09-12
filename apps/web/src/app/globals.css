@@ -215,67 +215,77 @@
   --panel-line:   #1a4f7a;
   --panel-line-2: #a9d2f0;
   --panel-ink:    #0b1f31;
-  --panel-soft:   #123a56;
-  --panel-faint:  #1d5075;
-  --panel-accent: #0b3d66;
+  --panel-soft:   #0e2c41;
+  --panel-faint:  #103148;
+  --panel-accent: #0a3557;
   --panel-bar:    #1a4f7a;
   --panel-bar-ink:#ffffff;
 }
 
+/* Glass, tinted to the brand blue.
+   Alpha is 0.62: enough of the dither reads through to feel like glass, and
+   the white half showing behind only ever lightens the panel — worst-case
+   contrast for the faintest text is still 7.4:1. */
 .panel {
-  background: var(--panel);
+  background: rgba(95, 166, 229, 0.62);
   color: var(--panel-ink);
-  border: 1px solid var(--panel-line);
-  border-radius: 3px;
-  /* Zero blur: a soft shadow next to a hard dither looks like a mistake. */
-  box-shadow: 4px 4px 0 0 rgba(11, 31, 49, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 18px;
+  backdrop-filter: blur(16px) saturate(135%);
+  -webkit-backdrop-filter: blur(16px) saturate(135%);
+  box-shadow:
+    0 10px 34px rgba(11, 31, 49, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
 .panel-flat {
-  background: var(--panel);
+  background: rgba(95, 166, 229, 0.52);
   color: var(--panel-ink);
-  border: 1px solid var(--panel-line);
-  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 16px;
+  backdrop-filter: blur(12px) saturate(125%);
+  -webkit-backdrop-filter: blur(12px) saturate(125%);
 }
 
 .panel-muted { color: var(--panel-soft); }
 .panel-faint { color: var(--panel-faint); }
 .panel-accent { color: var(--panel-accent); }
 
-/* A 2px checkerboard, the same cell size as the Bayer grid behind it — the
-   panel edge and the background then share one rhythm. */
+/* A 2px checkerboard at the same cell size as the field behind it, so the
+   pixel language survives the move to glass. */
 .dither-rule {
   height: 4px;
+  border-radius: 2px;
   background-image:
-    linear-gradient(45deg, #ffffff 25%, transparent 25%, transparent 75%, #ffffff 75%),
-    linear-gradient(45deg, #ffffff 25%, transparent 25%, transparent 75%, #ffffff 75%);
+    linear-gradient(45deg, rgba(255,255,255,0.85) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.85) 75%),
+    linear-gradient(45deg, rgba(255,255,255,0.85) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.85) 75%);
   background-size: 4px 4px;
   background-position: 0 0, 2px 2px;
 }
 
 .dither-fill {
   background-image:
-    linear-gradient(45deg, rgba(255,255,255,0.22) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.22) 75%),
-    linear-gradient(45deg, rgba(255,255,255,0.22) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.22) 75%);
+    linear-gradient(45deg, rgba(255,255,255,0.16) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.16) 75%),
+    linear-gradient(45deg, rgba(255,255,255,0.16) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.16) 75%);
   background-size: 4px 4px;
   background-position: 0 0, 2px 2px;
 }
 
-/* Chrome that reads as a title bar without cosplaying as one. */
-/* Title bar: darker blue with white pixel type, the way the era actually did
-   it — chrome inverts, the window body doesn't. */
+/* Window chrome, also glass — darker so white pixel type keeps its 8:1. */
 .panel-bar {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--panel-line);
-  background: var(--panel-bar);
+  padding: 0.5rem 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(26, 79, 122, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   font-family: var(--font-pixel);
   font-size: 0.625rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--panel-bar-ink);
+  color: #ffffff;
 }
 
 /* Pixel type only renders crisply when it isn't smoothed. */
@@ -292,57 +302,50 @@
   border-radius: 1px;
 }
 
-/* ---------------------------------------------------------------------------
-   Title-bar navigation
 
-   The blue chrome of a Y2K window title bar, but laid out like a modern site:
-   mark and tagline left, a pill of links centred, auth right. Dithered top and
-   bottom edges tie it to the field behind it instead of sitting on top of it.
+/* ---------------------------------------------------------------------------
+   Floating navigation
+
+   No bar. The header is transparent so the dithered field runs edge to edge,
+   and only the centre nav is a shape — a blurred pill that lets the pattern
+   read through it rather than covering a strip of the page.
 --------------------------------------------------------------------------- */
 
-.titlebar {
-  --bar:        #5ea6e5;
-  --bar-deep:   #2f7cc0;
-  --bar-ink:    #ffffff;
-  --bar-dim:    #d6e9fa;
-  background: linear-gradient(180deg, #6fb2ea 0%, var(--bar) 55%, var(--bar-deep) 100%);
-  border-bottom: 1px solid #1a4f7a;
-}
-
-/* The same 2px checkerboard the panels use, so bar and field share a rhythm. */
-.titlebar-dither {
-  height: 4px;
-  background-image:
-    linear-gradient(45deg, #ffffff 25%, transparent 25%, transparent 75%, #ffffff 75%),
-    linear-gradient(45deg, #ffffff 25%, transparent 25%, transparent 75%, #ffffff 75%);
-  background-size: 4px 4px;
-  background-position: 0 0, 2px 2px;
-  opacity: 0.55;
-}
-
-.titlebar-pill {
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+.navpill {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.75);
   border-radius: 999px;
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  box-shadow: 0 1px 2px rgba(11, 31, 49, 0.08);
 }
 
-.titlebar-link {
-  color: var(--bar-dim);
+.navlink {
+  color: #123a56;
+  border-radius: 999px;
   transition: color 160ms ease, background-color 160ms ease;
-  border-radius: 999px;
 }
-.titlebar-link:hover { color: #fff; background: rgba(255, 255, 255, 0.14); }
-.titlebar-link[data-active="true"] { color: #fff; background: rgba(255, 255, 255, 0.24); }
+.navlink:hover { color: #0b1f31; background: rgba(255, 255, 255, 0.6); }
+.navlink[data-active="true"] { color: #0b1f31; background: rgba(255, 255, 255, 0.85); }
 
-/* Raised, then pressed — the one piece of skeuomorphism worth keeping, because
-   it makes the button feel like the era the background is quoting. */
-.titlebar-btn {
-  border: 1px solid #1a4f7a;
-  border-radius: 3px;
-  box-shadow: 2px 2px 0 0 rgba(12, 46, 74, 0.55);
-  transition: transform 120ms ease, box-shadow 120ms ease;
+/* The mark and the auth controls sit straight on the field, so each carries
+   just enough of its own backing to stay legible over both halves of the
+   dither. */
+.navchip {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 999px;
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
 }
-.titlebar-btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: 0 0 0 0 rgba(12, 46, 74, 0.55);
+
+.navcta {
+  background: #0b1f31;
+  color: #ffffff;
+  border-radius: 999px;
+  border: 1px solid #0b1f31;
+  transition: transform 140ms ease, opacity 140ms ease;
 }
+.navcta:hover { opacity: 0.9; }
+.navcta:active { transform: translateY(1px); }
+
