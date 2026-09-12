@@ -2,35 +2,31 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
 
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/terms", label: "Terms" },
+  { href: "/privacy", label: "Privacy" },
 ];
 
 export function Nav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex items-center gap-1 text-sm">
+    <nav className="titlebar-pill hidden items-center gap-1 px-1.5 py-1 md:flex">
       {LINKS.map((l) => {
-        // "/" would otherwise match everything, so it needs exact comparison.
+        // "/" is a prefix of everything, so it needs an exact match.
         const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
         return (
           <Link
             key={l.href}
             href={l.href}
+            data-active={active}
             aria-current={active ? "page" : undefined}
-            className={cn(
-              "relative rounded-md px-3 py-1.5 transition-colors duration-200",
-              active ? "text-foreground" : "text-ink-soft hover:text-foreground",
-            )}
+            className="titlebar-link px-3.5 py-1.5 text-[0.8125rem]"
           >
             {l.label}
-            {active && (
-              <span className="absolute inset-x-3 -bottom-px h-px bg-forest" aria-hidden />
-            )}
           </Link>
         );
       })}

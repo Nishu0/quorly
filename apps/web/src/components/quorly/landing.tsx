@@ -5,18 +5,22 @@ import { ProblemModals } from "@/components/quorly/problem-modals";
 
 const FEATURES = [
   {
+    n: "A",
     t: "Approvals where work happens",
     d: "A contractor DMs an invoice PDF. The bot reads it, routes it against policy, and asks exactly the people who can approve. No portal.",
   },
   {
+    n: "B",
     t: "Friction priced to risk",
     d: "Under $500 clears in one click. Above it, a live Selfie Check. Above that, two approvers within three minutes of each other.",
   },
   {
+    n: "C",
     t: "Rules the app can't flip",
     d: "The treasury is owned by an m-of-n key quorum with its spend policy enforced inside a secure enclave — not by a boolean in our database.",
   },
   {
+    n: "D",
     t: "An audit trail worth reading",
     d: "Who approved, what proved they were live, which transaction settled it. Append-only, and readable by someone who wasn't there.",
   },
@@ -24,85 +28,111 @@ const FEATURES = [
 
 export function Landing() {
   return (
-    <>
-      <DitherBackground light="#faf7f0" dark="#5ea6e5" scale={3} />
+    <div className="dithered">
+      <DitherBackground light="#ffffff" dark="#5ea6e5" scale={3} />
 
       <div className="mx-auto max-w-5xl">
-        <section className="reveal rounded-2xl border border-rule bg-card/85 px-6 py-16 text-center backdrop-blur-md sm:px-12">
-          <p className="label mb-6">Treasury approvals</p>
-          <h1 className="display text-[clamp(2.5rem,7vw,4.5rem)] leading-[1.02]">
-            Money moves when a<br />
-            <em className="italic">live human</em> says so.
-          </h1>
-          <p className="mx-auto mt-7 max-w-lg text-[0.9375rem] leading-relaxed text-ink-soft">
-            Slack-native invoice approvals. Above a threshold the approver passes a live World ID
-            Selfie Check, and the payout leaves a treasury wallet governed by a key quorum.
-          </p>
-
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <a
-              href="/slack/install"
-              className="inline-flex w-full items-center justify-center gap-2.5 rounded-lg bg-primary px-6 py-3.5 text-sm font-medium text-primary-foreground transition-opacity duration-200 hover:opacity-90 sm:w-auto"
-            >
-              <SlackMark />
-              Add to Slack
-            </a>
-            <Link
-              href="/login"
-              className="inline-flex w-full items-center justify-center rounded-lg border border-input px-6 py-3.5 text-sm font-medium transition-colors duration-200 hover:border-foreground sm:w-auto"
-            >
-              Sign in
-            </Link>
+        {/* Hero */}
+        <section className="panel reveal overflow-hidden">
+          <div className="panel-bar">
+            <span className="panel-dot" />
+            <span className="panel-dot" />
+            <span className="panel-dot" />
+            <span className="ml-1">QUORLY.EXE — TREASURY APPROVALS</span>
           </div>
+
+          <div className="px-6 py-16 text-center sm:px-12">
+            <h1 className="display text-[clamp(2.5rem,7vw,4.5rem)] leading-[1.02]">
+              Money moves when a<br />
+              <em className="italic">live human</em> says so.
+            </h1>
+            <p className="panel-muted mx-auto mt-7 max-w-lg text-[0.9375rem] leading-relaxed">
+              Slack-native invoice approvals. Above a threshold the approver passes a live World ID
+              Selfie Check, and the payout leaves a treasury wallet governed by a key quorum.
+            </p>
+
+            <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <a
+                href="/slack/install"
+                className="inline-flex w-full items-center justify-center gap-2.5 border border-[var(--panel-line)] bg-[var(--panel-accent)] px-6 py-3.5 text-sm font-medium text-white transition-transform duration-150 hover:-translate-y-px active:translate-y-0 sm:w-auto"
+                style={{ borderRadius: 3, boxShadow: "3px 3px 0 0 var(--panel-line)" }}
+              >
+                <SlackMark />
+                Add to Slack
+              </a>
+              <Link
+                href="/login"
+                className="inline-flex w-full items-center justify-center border border-[var(--panel-line)] bg-[var(--panel)] px-6 py-3.5 text-sm font-medium transition-transform duration-150 hover:-translate-y-px active:translate-y-0 sm:w-auto"
+                style={{ borderRadius: 3, boxShadow: "3px 3px 0 0 var(--panel-line)" }}
+              >
+                Sign in
+              </Link>
+            </div>
+          </div>
+
+          <div className="dither-rule" />
         </section>
 
-        <section className="reveal mt-6" style={{ animationDelay: "100ms" }}>
+        {/* The problem, three ways */}
+        <section className="reveal mt-8" style={{ animationDelay: "100ms" }}>
           <ProblemModals />
         </section>
 
-        <section
-          className="reveal mt-6 rounded-2xl border border-rule bg-card/85 p-8 backdrop-blur-md sm:p-10"
-          style={{ animationDelay: "180ms" }}
-        >
-          <h2 className="display text-2xl leading-snug">One path, four checkpoints</h2>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">
-            Every invoice takes the same route. What changes with the amount is how many
-            checkpoints it has to clear.
-          </p>
-          <div className="mt-8 overflow-x-auto">
-            <div className="min-w-[680px]">
-              <FlowDiagram />
+        {/* Flow */}
+        <section className="panel reveal mt-8 overflow-hidden" style={{ animationDelay: "180ms" }}>
+          <div className="panel-bar">
+            <span className="panel-dot" />
+            <span className="ml-1">APPROVAL_PATH.DIAGRAM</span>
+          </div>
+          <div className="p-8 sm:p-10">
+            <h2 className="display text-2xl leading-snug">One path, four checkpoints</h2>
+            <p className="panel-muted mt-2 max-w-xl text-sm leading-relaxed">
+              Every invoice takes the same route. What changes with the amount is how many
+              checkpoints it has to clear.
+            </p>
+            <div className="mt-8 overflow-x-auto">
+              <div className="min-w-[680px]">
+                <FlowDiagram />
+              </div>
             </div>
           </div>
         </section>
 
-        <section
-          className="reveal mt-6 grid gap-px overflow-hidden rounded-2xl border border-rule bg-rule sm:grid-cols-2"
-          style={{ animationDelay: "240ms" }}
-        >
+        {/* Features */}
+        <section className="reveal mt-8 grid gap-4 sm:grid-cols-2" style={{ animationDelay: "240ms" }}>
           {FEATURES.map((f) => (
-            <article key={f.t} className="bg-card/90 p-8 backdrop-blur">
+            <article key={f.n} className="panel-flat p-7">
+              <div className="mb-4 flex items-center gap-2.5">
+                <span className="panel-accent pixel grid size-6 place-items-center border border-[var(--panel-line)] text-[0.625rem]">
+                  {f.n}
+                </span>
+                <span className="dither-rule flex-1" />
+              </div>
               <h3 className="display text-xl leading-snug">{f.t}</h3>
-              <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">{f.d}</p>
+              <p className="panel-muted mt-2.5 text-sm leading-relaxed">{f.d}</p>
             </article>
           ))}
         </section>
 
-        <section
-          className="reveal mt-6 rounded-2xl border border-rule bg-card/85 p-8 backdrop-blur-md sm:p-10"
-          style={{ animationDelay: "300ms" }}
-        >
-          <h2 className="label mb-4">What Selfie Check is, and isn&apos;t</h2>
-          <p className="max-w-2xl text-[0.9375rem] leading-relaxed text-ink-soft">
-            It&apos;s a medium-assurance credential — liveness and facial similarity, valid 90 days,
-            with no one-person-one-account guarantee. So Quorly never treats it as identity.
-            Authority to approve comes from the key quorum. Selfie Check answers one narrower
-            question:{" "}
-            <em className="italic text-foreground">was a live human behind this click?</em>
-          </p>
+        {/* The honest caveat */}
+        <section className="panel reveal mt-8 overflow-hidden" style={{ animationDelay: "300ms" }}>
+          <div className="dither-fill p-8 sm:p-10">
+            <p className="panel-faint pixel mb-3 text-[0.625rem] uppercase">
+              What Selfie Check is, and isn&apos;t
+            </p>
+            <p className="panel-muted max-w-2xl text-[0.9375rem] leading-relaxed">
+              It&apos;s a medium-assurance credential — liveness and facial similarity, valid 90
+              days, with no one-person-one-account guarantee. So Quorly never treats it as
+              identity. Authority to approve comes from the key quorum. Selfie Check answers one
+              narrower question:{" "}
+              <em className="italic" style={{ color: "var(--panel-ink)" }}>
+                was a live human behind this click?
+              </em>
+            </p>
+          </div>
         </section>
       </div>
-    </>
+    </div>
   );
 }
 

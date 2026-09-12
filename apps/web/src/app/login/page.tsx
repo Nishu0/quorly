@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { redirect } from "next/navigation";
 import { apiOrNull, type Member } from "@/lib/api";
 import { LoginPanel } from "./login-panel";
+import { DitherBackground } from "@/components/quorly/dither-background";
 
 export const metadata: Metadata = { title: "Sign in" };
 export const dynamic = "force-dynamic";
@@ -22,7 +23,8 @@ export default async function LoginPage() {
   if (me) redirect("/dashboard");
 
   return (
-    <div className="grid min-h-[calc(100vh-4rem)] gap-10 lg:grid-cols-2 lg:gap-16">
+    <div className="dithered grid min-h-[calc(100vh-4rem)] gap-10 lg:grid-cols-2 lg:gap-16">
+      <DitherBackground light="#ffffff" dark="#5ea6e5" scale={3} />
       <div className="flex flex-col justify-between py-2">
         <Link href="/" className="flex items-center gap-2.5 text-sm">
           {hasLogo() && (
@@ -31,7 +33,7 @@ export default async function LoginPage() {
           <span className="display text-lg">Quorly</span>
         </Link>
 
-        <div className="max-w-md py-16">
+        <div className="panel max-w-md p-8">
           <h1 className="display text-[2.75rem] leading-[1.05]">Welcome to Quorly</h1>
           <p className="mt-5 text-[0.9375rem] leading-relaxed text-ink-soft">
             Quorly is the approval checkpoint for company money: policy decides who signs, a live
@@ -52,7 +54,7 @@ export default async function LoginPage() {
           </p>
         </div>
 
-        <div className="space-y-3 text-xs text-ink-faint">
+        <div className="panel-flat panel-faint space-y-3 p-5 text-xs">
           <p>
             By continuing, I agree to Quorly&apos;s{" "}
             <Link href="/terms" className="underline underline-offset-4 hover:text-foreground">
@@ -78,7 +80,7 @@ export default async function LoginPage() {
         </div>
       </div>
 
-      <div className="relative hidden overflow-hidden rounded-2xl border border-rule bg-ink lg:block">
+      <div className="panel relative hidden overflow-hidden bg-[#5FA6E5] lg:block">
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">
           {hasLogo() && (
             <Image
@@ -89,8 +91,8 @@ export default async function LoginPage() {
               className="size-14 rounded-xl opacity-90"
             />
           )}
-          <p className="font-mono text-[0.6875rem] uppercase tracking-[0.3em] text-white/40">
-            Route. Prove. Release.
+          <p className="pixel text-[0.6875rem] uppercase tracking-[0.24em] text-white">
+            Route. Prove. Pay.
           </p>
         </div>
 
@@ -99,7 +101,7 @@ export default async function LoginPage() {
           aria-hidden
           className="pointer-events-none absolute left-1/2 top-1/2 size-[36rem] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.18]"
           style={{
-            background: "radial-gradient(circle, var(--forest) 0%, transparent 62%)",
+            background: "radial-gradient(circle, #ffffff 0%, transparent 62%)",
           }}
         />
       </div>

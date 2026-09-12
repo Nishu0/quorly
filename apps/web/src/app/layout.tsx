@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Instrument_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/google";
+import { Instrument_Sans, Instrument_Serif, JetBrains_Mono, Silkscreen } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { SiteChrome } from "@/components/quorly/site-chrome";
 import { Logo } from "@/components/quorly/logo";
@@ -16,6 +16,15 @@ const serif = Instrument_Serif({
   weight: "400",
   style: ["normal", "italic"],
   variable: "--font-instrument-serif",
+  display: "swap",
+});
+
+// Chrome only: title bars, window labels, the small uppercase runs. A bitmap
+// face is the whole point at those sizes and unreadable at any other.
+const pixel = Silkscreen({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-silkscreen",
   display: "swap",
 });
 
@@ -42,7 +51,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${serif.variable} ${mono.variable}`}>
+    <html lang="en" className={`${sans.variable} ${serif.variable} ${mono.variable} ${pixel.variable}`}>
       <body className="flex min-h-screen flex-col">
         <Providers>
           <SiteChrome logo={<Logo />}>{children}</SiteChrome>

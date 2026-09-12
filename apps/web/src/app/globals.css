@@ -119,6 +119,7 @@
   --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, Menlo, monospace;
+  --font-pixel: var(--font-silkscreen), var(--font-jetbrains-mono), monospace;
 
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
@@ -192,4 +193,161 @@
   .reveal {
     animation: none;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Dithered surfaces
+
+   The background is two colours with hard pixel edges. Soft blurred panels
+   fight that on every axis — blur is the direct opposite of a dither, and a
+   warm cream card next to a cool blue field reads as an accident.
+
+   So on dithered pages: crisp white, one-pixel borders, offset shadows with
+   zero blur, and small radii. Everything stays legible without covering the
+   pattern in frosted glass.
+--------------------------------------------------------------------------- */
+
+.dithered {
+  --panel:        #ffffff;
+  --panel-line:   #1a4f7a;
+  --panel-line-2: #bcd9ef;
+  --panel-ink:    #0d1f30;
+  --panel-soft:   #4a6a85;
+  --panel-faint:  #7f9ab0;
+  --panel-accent: #1a5fa0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .dithered:not([data-theme="light"]) {
+    --panel:        #0c1620;
+    --panel-line:   #4d8ec4;
+    --panel-line-2: #1d3242;
+    --panel-ink:    #e8f1f8;
+    --panel-soft:   #9db4c7;
+    --panel-faint:  #6b8399;
+    --panel-accent: #7fc0f5;
+  }
+}
+
+.panel {
+  background: var(--panel);
+  color: var(--panel-ink);
+  border: 1px solid var(--panel-line);
+  border-radius: 3px;
+  /* Zero blur: a soft shadow next to a hard dither looks like a mistake. */
+  box-shadow: 4px 4px 0 0 color-mix(in srgb, var(--panel-line) 22%, transparent);
+}
+
+.panel-flat {
+  background: var(--panel);
+  color: var(--panel-ink);
+  border: 1px solid var(--panel-line);
+  border-radius: 3px;
+}
+
+.panel-muted { color: var(--panel-soft); }
+.panel-faint { color: var(--panel-faint); }
+.panel-accent { color: var(--panel-accent); }
+
+/* A 2px checkerboard, the same cell size as the Bayer grid behind it — the
+   panel edge and the background then share one rhythm. */
+.dither-rule {
+  height: 4px;
+  background-image:
+    linear-gradient(45deg, var(--panel-line-2) 25%, transparent 25%, transparent 75%, var(--panel-line-2) 75%),
+    linear-gradient(45deg, var(--panel-line-2) 25%, transparent 25%, transparent 75%, var(--panel-line-2) 75%);
+  background-size: 4px 4px;
+  background-position: 0 0, 2px 2px;
+}
+
+.dither-fill {
+  background-image:
+    linear-gradient(45deg, color-mix(in srgb, var(--panel-line) 10%, transparent) 25%, transparent 25%, transparent 75%, color-mix(in srgb, var(--panel-line) 10%, transparent) 75%),
+    linear-gradient(45deg, color-mix(in srgb, var(--panel-line) 10%, transparent) 25%, transparent 25%, transparent 75%, color-mix(in srgb, var(--panel-line) 10%, transparent) 75%);
+  background-size: 4px 4px;
+  background-position: 0 0, 2px 2px;
+}
+
+/* Chrome that reads as a title bar without cosplaying as one. */
+.panel-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--panel-line);
+  background: color-mix(in srgb, var(--panel-line) 8%, var(--panel));
+  font-family: var(--font-pixel);
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--panel-soft);
+}
+
+/* Pixel type only renders crisply when it isn't smoothed. */
+.pixel {
+  font-family: var(--font-pixel);
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+.panel-dot {
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--panel-line);
+  border-radius: 1px;
+}
+
+/* ---------------------------------------------------------------------------
+   Title-bar navigation
+
+   The blue chrome of a Y2K window title bar, but laid out like a modern site:
+   mark and tagline left, a pill of links centred, auth right. Dithered top and
+   bottom edges tie it to the field behind it instead of sitting on top of it.
+--------------------------------------------------------------------------- */
+
+.titlebar {
+  --bar:        #5ea6e5;
+  --bar-deep:   #2f7cc0;
+  --bar-ink:    #ffffff;
+  --bar-dim:    #d6e9fa;
+  background: linear-gradient(180deg, #6fb2ea 0%, var(--bar) 55%, var(--bar-deep) 100%);
+  border-bottom: 1px solid #1a4f7a;
+}
+
+/* The same 2px checkerboard the panels use, so bar and field share a rhythm. */
+.titlebar-dither {
+  height: 4px;
+  background-image:
+    linear-gradient(45deg, #ffffff 25%, transparent 25%, transparent 75%, #ffffff 75%),
+    linear-gradient(45deg, #ffffff 25%, transparent 25%, transparent 75%, #ffffff 75%);
+  background-size: 4px 4px;
+  background-position: 0 0, 2px 2px;
+  opacity: 0.55;
+}
+
+.titlebar-pill {
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+}
+
+.titlebar-link {
+  color: var(--bar-dim);
+  transition: color 160ms ease, background-color 160ms ease;
+  border-radius: 999px;
+}
+.titlebar-link:hover { color: #fff; background: rgba(255, 255, 255, 0.14); }
+.titlebar-link[data-active="true"] { color: #fff; background: rgba(255, 255, 255, 0.24); }
+
+/* Raised, then pressed — the one piece of skeuomorphism worth keeping, because
+   it makes the button feel like the era the background is quoting. */
+.titlebar-btn {
+  border: 1px solid #1a4f7a;
+  border-radius: 3px;
+  box-shadow: 2px 2px 0 0 rgba(12, 46, 74, 0.55);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.titlebar-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 0 rgba(12, 46, 74, 0.55);
 }

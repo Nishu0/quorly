@@ -10,7 +10,7 @@ export function LegalPage({
   children: React.ReactNode;
 }) {
   return (
-    <article className="mx-auto max-w-2xl">
+    <article className="dithered mx-auto max-w-2xl">
       <Link
         href="/"
         className="mb-10 inline-block text-sm text-ink-soft transition-colors hover:text-foreground"
@@ -18,22 +18,30 @@ export function LegalPage({
         ← Home
       </Link>
 
-      <h1 className="display text-[2.5rem] leading-[1.08]">{title}</h1>
-      <p className="mt-3 font-mono text-xs text-ink-faint">Last updated {updated}</p>
+      <div className="panel overflow-hidden">
+        <div className="panel-bar">
+          <span className="panel-dot" />
+          <span>{title.toUpperCase().replace(/ /g, "_")}.TXT</span>
+        </div>
+        <div className="p-7">
+          <h1 className="display text-[2.5rem] leading-[1.08]">{title}</h1>
+          <p className="panel-faint mt-3 font-mono text-xs">Last updated {updated}</p>
+        </div>
+      </div>
 
-      <div className="mt-10 rounded-xl border border-amber/30 bg-amber-soft p-5">
-        <p className="text-sm leading-relaxed text-amber">
+      <div className="panel-flat mt-6 border-[#a15c00]/50 bg-[#fdf4e3] p-5">
+        <p className="text-sm leading-relaxed text-[#8a5a00]">
           <strong>Quorly is a hackathon project</strong>, built for ETHOnline 2026. It runs on test
           networks with test tokens, it is not a licensed financial service, and it carries no
           warranty or uptime commitment. Please don&apos;t use it for real money or real payroll.
         </p>
       </div>
 
-      <div className="legal mt-10 space-y-7 text-[0.9375rem] leading-relaxed text-ink-soft">
+      <div className="panel-flat legal panel-muted mt-6 space-y-7 p-7 text-[0.9375rem] leading-relaxed">
         {children}
       </div>
 
-      <div className="mt-14 border-t border-rule pt-6 text-sm text-ink-faint">
+      <div className="panel-flat panel-faint mt-6 p-5 text-sm">
         Questions about any of this?{" "}
         <a
           href="mailto:itsnisargthakkar@gmail.com"
@@ -49,7 +57,9 @@ export function LegalPage({
 export function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="display mb-2.5 text-xl text-foreground">{title}</h2>
+      <h2 className="display mb-2.5 text-xl" style={{ color: "var(--panel-ink)" }}>
+        {title}
+      </h2>
       <div className="space-y-3">{children}</div>
     </section>
   );

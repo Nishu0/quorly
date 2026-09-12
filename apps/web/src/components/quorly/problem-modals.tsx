@@ -55,17 +55,22 @@ export function ProblemModals() {
 
   return (
     <>
-      <div className="grid gap-px overflow-hidden rounded-xl border border-rule bg-rule sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3">
         {PROBLEMS.map((p, i) => (
           <button
             key={p.k}
             onClick={() => setOpen(i)}
-            className="group bg-card/90 p-6 text-left backdrop-blur transition-colors duration-200 hover:bg-card"
+            className="panel group p-6 text-left transition-transform duration-150 hover:-translate-y-0.5"
           >
-            <p className="label mb-3 !text-forest">{p.k}</p>
+            <div className="mb-4 flex items-center gap-2.5">
+              <span className="panel-accent pixel grid size-6 place-items-center border border-[var(--panel-line)] text-[0.625rem]">
+                {p.k}
+              </span>
+              <span className="dither-rule flex-1" />
+            </div>
             <h3 className="display text-lg leading-snug">{p.title}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-ink-soft">{p.teaser}</p>
-            <span className="mt-4 inline-flex items-center gap-1.5 text-xs text-ink-faint transition-colors group-hover:text-forest">
+            <p className="panel-muted mt-2 text-sm leading-relaxed">{p.teaser}</p>
+            <span className="panel-faint pixel mt-4 inline-flex items-center gap-1.5 text-[0.625rem] uppercase transition-colors group-hover:text-[var(--panel-accent)]">
               Read more
               <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5">
                 →
@@ -76,18 +81,41 @@ export function ProblemModals() {
       </div>
 
       <Dialog open={open !== null} onOpenChange={(o) => !o && setOpen(null)}>
-        <DialogContent className="max-w-lg border-rule bg-card">
+        <DialogContent
+          showCloseButton={false}
+          className="dithered max-w-lg gap-0 overflow-hidden border-[var(--panel-line)] bg-[var(--panel)] p-0 shadow-[6px_6px_0_0_rgba(26,79,122,0.35)] sm:rounded-[3px]"
+        >
           {active && (
             <>
-              <DialogHeader>
-                <p className="label mb-1 !text-forest">{active.k}</p>
-                <DialogTitle className="display text-2xl leading-snug">{active.title}</DialogTitle>
-                <DialogDescription className="sr-only">{active.teaser}</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 text-[0.9375rem] leading-relaxed text-ink-soft">
-                {active.body.map((para) => (
-                  <p key={para.slice(0, 24)}>{para}</p>
-                ))}
+              <div className="panel-bar justify-between">
+                <span className="flex items-center gap-2">
+                  <span className="panel-dot" />
+                  <span>PROBLEM_{active.k}.TXT</span>
+                </span>
+                <button
+                  onClick={() => setOpen(null)}
+                  aria-label="Close"
+                  className="titlebar-btn pixel bg-[var(--panel)] px-2 py-0.5 text-[0.625rem] text-[var(--panel-ink)]"
+                >
+                  X
+                </button>
+              </div>
+
+              <div className="p-7">
+                <DialogHeader className="space-y-0 text-left">
+                  <DialogTitle className="display text-2xl leading-snug text-[var(--panel-ink)]">
+                    {active.title}
+                  </DialogTitle>
+                  <DialogDescription className="sr-only">{active.teaser}</DialogDescription>
+                </DialogHeader>
+
+                <div className="dither-rule my-5" />
+
+                <div className="panel-muted space-y-4 text-[0.9375rem] leading-relaxed">
+                  {active.body.map((para) => (
+                    <p key={para.slice(0, 24)}>{para}</p>
+                  ))}
+                </div>
               </div>
             </>
           )}
