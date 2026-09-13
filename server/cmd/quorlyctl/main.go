@@ -19,8 +19,11 @@ import (
 	"github.com/Nishu0/quorly/server/internal/config"
 	"github.com/Nishu0/quorly/server/internal/domain"
 	"github.com/Nishu0/quorly/server/internal/ids"
+	"log/slog"
+
 	"github.com/Nishu0/quorly/server/internal/money"
 	"github.com/Nishu0/quorly/server/internal/policy"
+	"github.com/Nishu0/quorly/server/internal/privy"
 	"github.com/Nishu0/quorly/server/internal/queue"
 	"github.com/Nishu0/quorly/server/internal/service"
 	"github.com/Nishu0/quorly/server/internal/store"
@@ -31,7 +34,7 @@ const demoOrg = "org_demo_acme"
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("usage: quorlyctl <seed|invoice|roster|queue|worldcheck>")
+		fmt.Println("usage: quorlyctl <seed|invoice|roster|queue|worldcheck|syncpolicy>")
 		os.Exit(2)
 	}
 
@@ -65,6 +68,12 @@ func main() {
 			org = os.Args[3]
 		}
 		invoice(ctx, cfg, db, amount, org)
+	case "syncpolicy":
+		org := demoOrg
+		if len(os.Args) > 2 {
+			org = os.Args[2]
+		}
+		syncpolicy(ctx, cfg, db, org)
 	case "roster":
 		org := demoOrg
 		if len(os.Args) > 2 {
@@ -238,6 +247,28 @@ func pickSubmitter(ctx context.Context, db *store.Store, orgID string) (string, 
 			"self-approval is blocked, approve as somebody else\n", orgID, best.Display())
 	}
 	return best.ID, nil
+}
+
+// syncpolicy rewrites the treasury payee allowlist from the roster. Normally
+// this happens when a member wallet is created; this is for the case where the
+// roster was populated before the policy knew to care.
+func syncpolicy(ctx context.Context, cfg *config.Config, db *store.Store, orgID string) {
+	maxPayout, err := money.ToBaseUnits("25000")
+	if err != nil {
+		fail(err)
+	}
+	w := &service.Wallets{
+		DB: db,
+		Privy: privy.New(cfg.Privy.AppID, cfg.Privy.AppSecret,
+			cfg.Privy.BaseURL, cfg.Privy.AuthKeys),
+		Log:           slog.Default(),
+		TokenAddress:  cfg.Chain.SettlementToken,
+		MaxPayoutBase: maxPayout,
+	}
+	if err := w.SyncPayeeAllowlist(ctx, orgID); err != nil {
+		fail(err)
+	}
+	fmt.Println("payee allowlist synced for", orgID)
 }
 
 func worldcheck(cfg *config.Config) {
