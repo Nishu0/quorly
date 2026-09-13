@@ -184,6 +184,24 @@ type Intent struct {
 	// action objects around it are.
 	ID     string `json:"intent_id"`
 	Status string `json:"status"`
+	// RequestDetails is the call the intent will make once authorised. Privy
+	// echoes it back verbatim, which is what makes it safe to sign: the
+	// signature has to cover exactly the bytes Privy holds, not our
+	// reconstruction of them.
+	RequestDetails struct {
+		Method string          `json:"method"`
+		URL    string          `json:"url"`
+		Body   json.RawMessage `json:"body"`
+	} `json:"request_details"`
+	AuthorizationDetails []struct {
+		Threshold int    `json:"threshold"`
+		DisplayName string `json:"display_name"`
+		Members   []struct {
+			Type      string `json:"type"`
+			PublicKey string `json:"public_key"`
+			SignedAt  *int64 `json:"signed_at"`
+		} `json:"members"`
+	} `json:"authorization_details"`
 	// Only present once the intent reaches executed or failed.
 	ActionResult struct {
 		StatusCode   int `json:"status_code"`
@@ -252,6 +270,66 @@ func (c *Client) CreateTransferIntent(ctx context.Context, p TransferParams) (In
 			"(wallet %s) — the response shape has probably moved", p.WalletID)
 	}
 	return out, nil
+}
+
+// NeedsAuthorization reports the quorum threshold and how many members have
+// already signed. An intent sits at pending until the two meet.
+func (i Intent) NeedsAuthorization() (signed, threshold int) {
+	for _, a := range i.AuthorizationDetails {
+		threshold += a.Threshold
+		for _, m := range a.Members {
+			if m.SignedAt != nil {
+				signed++
+			}
+		}
+	}
+	return signed, threshold
+}
+
+// AuthorizeIntent signs the intent's underlying request with each quorum key
+// and submits the signatures one per call, which is the shape the endpoint
+// takes — a threshold above one is several signers each authorising in turn.
+//
+// The signatures on the creation request authenticate that call alone; they do
+// not carry over into approvals of the action it proposes. Without this the
+// intent stays pending until it expires.
+func (c *Client) AuthorizeIntent(ctx context.Context, in Intent) error {
+	signed, threshold := in.NeedsAuthorization()
+	if threshold == 0 || signed >= threshold {
+		return nil
+	}
+
+	var body any
+	if len(in.RequestDetails.Body) > 0 {
+		if err := json.Unmarshal(in.RequestDetails.Body, &body); err != nil {
+			return fmt.Errorf("intent request body: %w", err)
+		}
+	} else {
+		body = map[string]any{}
+	}
+
+	for _, key := range c.AuthKeys {
+		if signed >= threshold {
+			break
+		}
+		sig, err := AuthorizationSignature(
+			in.RequestDetails.Method, in.RequestDetails.URL, body, c.AppID, key)
+		if err != nil {
+			return fmt.Errorf("sign intent: %w", err)
+		}
+		payload := map[string]any{
+			"signature": sig,
+			"timestamp": time.Now().UnixMilli(),
+		}
+		// Deliberately unsigned: the authorisation *is* the payload, and
+		// re-submitting one signer is a no-op rather than a second approval.
+		if err := c.call(ctx, http.MethodPost, "/v1/intents/"+in.ID+"/authorize",
+			payload, nil, callOpts{}); err != nil {
+			return fmt.Errorf("authorize intent %s: %w", in.ID, err)
+		}
+		signed++
+	}
+	return nil
 }
 
 func (c *Client) Intent(ctx context.Context, intentID string) (Intent, error) {

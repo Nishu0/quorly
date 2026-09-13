@@ -167,6 +167,18 @@ func (p *Payouts) handleSettleWatch(ctx context.Context, j queue.Job) error {
 		return err
 	}
 
+	// Creating an intent does not approve it. Sign it here rather than at
+	// creation so a restart, or a quorum that changed under us, still gets the
+	// signatures in — Privy executes on its own once the threshold is met.
+	if signed, threshold := intent.NeedsAuthorization(); signed < threshold {
+		if err := p.Privy.AuthorizeIntent(ctx, intent); err != nil {
+			return err
+		}
+		p.Log.Info("intent authorized", "invoice", inv.ID, "intent", intent.ID,
+			"threshold", threshold)
+		return worker.RetryLater{In: 5 * time.Second}
+	}
+
 	if hash := intent.TxHash(); hash != "" {
 		if err := p.Service.DB.MarkInvoicePaid(ctx, inv.ID, hash); err != nil {
 			return err
