@@ -2,7 +2,8 @@
 
 **Face-verified approvals for company money.**
 
-A contractor DMs an invoice to a Slack bot. Quorly reads it, routes it against the
+A contractor raises an invoice — DM the PDF to the Slack bot, or file it from the
+dashboard. Quorly reads it, routes it against the
 company's approval policy, pings the manager who actually has authority, and — above
 a dollar threshold — makes that manager pass a **World ID Selfie Check** before the
 approval counts. Only then does a **Privy** treasury wallet release the payment, under
@@ -54,6 +55,7 @@ flowchart TB
     end
 
     C -->|"DMs a PDF"| S
+    C -->|"or files it in the dashboard"| W
     S --> AI
     S --> API
     A -->|"approves"| W
@@ -187,7 +189,7 @@ sequenceDiagram
     participant P as Privy quorum
     participant B as Base Sepolia
 
-    C->>S: DMs an invoice PDF
+    C->>S: DMs an invoice PDF (or files it in the dashboard)
     S->>Q: extracted amount, number, description
     Q->>Q: route against policy → "Standard, 1 approval + selfie"
     Q-->>A: approval card in Slack

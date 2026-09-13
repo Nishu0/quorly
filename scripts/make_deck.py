@@ -144,7 +144,7 @@ def slide_architecture(prs):
     meme(s, "drake", Inches(2.35), Inches(2.05), Inches(3.9))
 
     steps = [
-        ("01", "SLACK", "Contractor DMs a PDF.\nClaude reads the amount.", INK),
+        ("01", "INTAKE", "DM the PDF to Slack, or\nfile it in the dashboard.", INK),
         ("02", "POLICY", "Routed on amount and role.\nOnly real approvers pinged.", INK),
         ("03", "YOUR FACE", "Above the threshold, a live\nWorld ID Selfie Check.", BLUE),
         ("04", "THE QUORUM", "2-of-3 keys sign in an\nenclave. Then it pays.", GREEN),
