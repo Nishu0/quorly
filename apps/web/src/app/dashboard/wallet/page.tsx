@@ -4,6 +4,7 @@ import { shortAddress } from "@/lib/format";
 import { Amount, Field } from "@/components/quorly/primitives";
 import { QUSD_ABI, publicClient } from "@/lib/qusd";
 import { WalletActions } from "./wallet-actions";
+import { ExportKey } from "./export-key";
 
 export const dynamic = "force-dynamic";
 
@@ -54,16 +55,24 @@ export default async function WalletPage() {
             address={address}
             balance={balance}
             canSend={Boolean(address) && fundedForGas && Number(balance) > 0}
+            needsGas={Boolean(address) && !fundedForGas}
             reason={
               !address
                 ? "Your wallet is still being created. Reload in a moment."
                 : !fundedForGas
-                  ? "This wallet holds no ETH. Without gas it can receive but not spend — send a little Base Sepolia ETH to the address to unlock transfers."
+                  ? "This wallet holds no ETH. Without gas it can receive but not spend, so sponsor a little below and the transfer unlocks."
                   : Number(balance) === 0
                     ? "Nothing to send yet. Get paid an invoice, or pull from the faucet."
                     : ""
             }
           />
+
+          {address && (
+            <div className="mt-12 border-t border-rule pt-8">
+              <h2 className="label mb-4">Take it with you</h2>
+              <ExportKey />
+            </div>
+          )}
         </section>
 
         <aside className="reveal" style={{ animationDelay: "90ms" }}>

@@ -14,6 +14,8 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@hpke/chacha20poly1305": "^1.8.0",
+    "@hpke/core": "^1.9.0",
     "@privy-io/react-auth": "^3.42.0",
     "@tabler/icons-react": "^3.46.0",
     "@tanstack/react-table": "^9.2.4",

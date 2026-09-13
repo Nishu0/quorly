@@ -234,6 +234,33 @@ func ERC20TransferData(to string, amount *big.Int) string {
 		fmt.Sprintf("%064s", amount.Text(16))
 }
 
+/* ------------------------------------------------------------------- export */
+
+// ExportedKey is a wallet private key encrypted to a public key the caller
+// supplied. Privy never returns the key in the clear and neither do we: the
+// recipient keypair is generated in the browser, so the plaintext exists only
+// there, and this server handles nothing it could leak.
+type ExportedKey struct {
+	EncryptionType  string `json:"encryption_type"`
+	Ciphertext      string `json:"ciphertext"`
+	EncapsulatedKey string `json:"encapsulated_key"`
+}
+
+// ExportWallet asks Privy for the wallet's private key under HPKE.
+//
+// recipientPublicKey is base64 of the raw uncompressed P-256 point, which is
+// what RFC 9180 specifies for DHKEM(P-256) and what WebCrypto's "raw" export
+// produces. Suite: DHKEM_P256_HKDF_SHA256 / HKDF_SHA256 / ChaCha20-Poly1305.
+func (c *Client) ExportWallet(ctx context.Context, walletID, recipientPublicKey string) (ExportedKey, error) {
+	var out ExportedKey
+	err := c.call(ctx, http.MethodPost, "/v1/wallets/"+walletID+"/export",
+		map[string]any{
+			"encryption_type":      "HPKE",
+			"recipient_public_key": recipientPublicKey,
+		}, &out, callOpts{})
+	return out, err
+}
+
 /* -------------------------------------------------------------------- users */
 
 type User struct {

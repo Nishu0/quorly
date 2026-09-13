@@ -106,3 +106,50 @@ func isAddress(s string) bool {
 	}
 	return true
 }
+
+// exportWallet hands back the member's own key, encrypted to a public key the
+// browser generated for this one request.
+//
+// The server is a courier here and nothing more: it never holds the plaintext
+// key, cannot decrypt what it forwards, and logs none of it. That is the whole
+// reason the recipient keypair belongs in the browser rather than here.
+func (s *Server) exportWallet(w http.ResponseWriter, r *http.Request) {
+	m, err := auth.Require(r.Context())
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	if m.WalletID == nil || *m.WalletID == "" {
+		writeErr(w, http.StatusBadRequest, "You don't have a wallet to export.")
+		return
+	}
+
+	var body struct {
+		RecipientPublicKey string `json:"recipientPublicKey"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "bad request body")
+		return
+	}
+	if strings.TrimSpace(body.RecipientPublicKey) == "" {
+		writeErr(w, http.StatusBadRequest, "missing recipient key")
+		return
+	}
+
+	// Only ever the caller's own wallet: the id comes from the session, never
+	// from the request, so no one can name somebody else's wallet here.
+	out, err := s.Privy.ExportWallet(r.Context(), *m.WalletID, body.RecipientPublicKey)
+	if err != nil {
+		// Deliberately terse: an upstream error on this path should not echo
+		// anything about key material back to the browser.
+		s.Log.Error("wallet export", "err", err, "member", m.ID)
+		writeErr(w, http.StatusBadGateway, "Couldn't export the key. Try again.")
+		return
+	}
+	s.Log.Info("wallet key exported", "member", m.ID)
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ciphertext":      out.Ciphertext,
+		"encapsulatedKey": out.EncapsulatedKey,
+	})
+}

@@ -57,6 +57,7 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("GET /api/wallet", s.getWallet)
 	mux.HandleFunc("POST /api/wallet/send", s.sendFromWallet)
+	mux.HandleFunc("POST /api/wallet/export", s.exportWallet)
 
 	mux.HandleFunc("POST /api/world/context", s.worldContext)
 	mux.HandleFunc("POST /api/attest", s.attest)

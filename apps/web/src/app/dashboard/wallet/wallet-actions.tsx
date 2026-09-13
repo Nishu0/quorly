@@ -10,11 +10,13 @@ export function WalletActions({
   address,
   balance,
   canSend,
+  needsGas,
   reason,
 }: {
   address: string;
   balance: string;
   canSend: boolean;
+  needsGas: boolean;
   reason: string;
 }) {
   const router = useRouter();
@@ -24,6 +26,28 @@ export function WalletActions({
   const [message, setMessage] = useState("");
   const [hash, setHash] = useState("");
   const [copied, setCopied] = useState(false);
+  const [gasState, setGasState] = useState<"idle" | "working" | "done">("idle");
+
+  async function topUpGas() {
+    setGasState("working");
+    setMessage("");
+    try {
+      const res = await fetch("/api/wallet/gas", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) {
+        setGasState("idle");
+        setState("error");
+        setMessage(json.error ?? "Couldn't sponsor gas.");
+        return;
+      }
+      setGasState("done");
+      router.refresh();
+    } catch {
+      setGasState("idle");
+      setState("error");
+      setMessage("Network error.");
+    }
+  }
 
   async function copy() {
     try {
@@ -157,6 +181,21 @@ export function WalletActions({
         </button>
 
         {reason && <p className="text-xs leading-relaxed text-ink-faint">{reason}</p>}
+
+        {needsGas && (
+          <button
+            type="button"
+            onClick={topUpGas}
+            disabled={gasState !== "idle"}
+            className="w-full rounded-md border border-input px-4 py-2.5 text-sm transition-colors hover:border-foreground disabled:opacity-50"
+          >
+            {gasState === "working"
+              ? "Sponsoring…"
+              : gasState === "done"
+                ? "Gas sent — reloading"
+                : "Sponsor my gas"}
+          </button>
+        )}
         {state === "error" && (
           <p className="rounded-md bg-oxblood-soft p-3 text-sm text-oxblood">{message}</p>
         )}
