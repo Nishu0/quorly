@@ -34,11 +34,17 @@ export function ExportKey() {
         aead: new Chacha20Poly1305(),
       });
 
-      const pair = await suite.kem.generateKeyPair();
-      // RFC 9180 serialises a DHKEM(P-256) public key as the uncompressed
-      // point, which is what Privy expects, base64-encoded.
-      const raw = new Uint8Array(await suite.kem.serializePublicKey(pair.publicKey));
-      const recipientPublicKey = btoa(String.fromCharCode(...raw));
+      // Generated through WebCrypto rather than the HPKE helper because Privy
+      // wants the public key SPKI-formatted, and the KEM's own serialisation
+      // is the bare uncompressed point RFC 9180 specifies. Same key either
+      // way; only the wrapper differs.
+      const pair = await crypto.subtle.generateKey(
+        { name: "ECDH", namedCurve: "P-256" },
+        true,
+        ["deriveBits"],
+      );
+      const spki = new Uint8Array(await crypto.subtle.exportKey("spki", pair.publicKey));
+      const recipientPublicKey = btoa(String.fromCharCode(...spki));
 
       const res = await fetch("/api/wallet/export", {
         method: "POST",
