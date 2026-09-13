@@ -180,23 +180,34 @@ func (c *Client) UpdateWalletPolicies(ctx context.Context, walletID string, poli
 /* ------------------------------------------------------------------ intents */
 
 type Intent struct {
-	ID                      string `json:"id"`
-	Status                  string `json:"status"`
-	AuthorizationsCollected int    `json:"authorizations_collected"`
-	AuthorizationThreshold  int    `json:"authorization_threshold"`
-	Execution               struct {
-		Status          string `json:"status"`
-		TransactionHash string `json:"transaction_hash"`
-		Hash            string `json:"hash"`
-	} `json:"execution"`
+	// intent_id, not id — an intent is not addressed the way the wallet and
+	// action objects around it are.
+	ID     string `json:"intent_id"`
+	Status string `json:"status"`
+	// Only present once the intent reaches executed or failed.
+	ActionResult struct {
+		StatusCode   int `json:"status_code"`
+		ResponseBody struct {
+			Status string `json:"status"`
+			Steps  []struct {
+				Type            string `json:"type"`
+				Status          string `json:"status"`
+				TransactionHash string `json:"transaction_hash"`
+			} `json:"steps"`
+		} `json:"response_body"`
+	} `json:"action_result"`
 }
 
-// TxHash returns whichever field carried the hash, or "".
+// TxHash returns the hash of the first step that carries one. A transfer is a
+// single evm_transaction today, but the field is a list because Privy may
+// route one through several.
 func (i Intent) TxHash() string {
-	if i.Execution.TransactionHash != "" {
-		return i.Execution.TransactionHash
+	for _, st := range i.ActionResult.ResponseBody.Steps {
+		if st.TransactionHash != "" {
+			return st.TransactionHash
+		}
 	}
-	return i.Execution.Hash
+	return ""
 }
 
 type TransferParams struct {
@@ -229,9 +240,18 @@ func (c *Client) CreateTransferIntent(ctx context.Context, p TransferParams) (In
 	}
 
 	var out Intent
-	err := c.call(ctx, http.MethodPost, "/v1/intents/wallets/"+p.WalletID+"/transfer",
-		body, &out, callOpts{sign: true, idempotencyKey: p.ReferenceID})
-	return out, err
+	if err := c.call(ctx, http.MethodPost, "/v1/intents/wallets/"+p.WalletID+"/transfer",
+		body, &out, callOpts{sign: true, idempotencyKey: p.ReferenceID}); err != nil {
+		return out, err
+	}
+	// A 200 whose body we could not read leaves nothing to watch: the payout
+	// job would report success while the intent went unpolled forever. Treat
+	// it as the failure it is, so the queue retries and says why.
+	if out.ID == "" {
+		return out, fmt.Errorf("privy accepted the transfer but returned no intent_id "+
+			"(wallet %s) — the response shape has probably moved", p.WalletID)
+	}
+	return out, nil
 }
 
 func (c *Client) Intent(ctx context.Context, intentID string) (Intent, error) {
