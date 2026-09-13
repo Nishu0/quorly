@@ -62,6 +62,14 @@ export function Bento() {
           </div>
         </Card>
 
+        <Card title="Ask it, don't hunt for it"
+          body="Mention the bot or message it. It answers from your own invoices — what's waiting on you, where a payment got to — and hands you the link straight into approving it.">
+          <div className="space-y-2">
+            <Bubble text="what's waiting on me?" mine />
+            <Bubble text="INV-4717, $2,000. You can approve it — needs a selfie." />
+          </div>
+        </Card>
+
         <Card className="md:col-span-2" title="Paid onchain, in about a minute"
           body="Once the quorum is met the payout leaves for the contractor's own wallet. Who approved, what proved they were live, and which transaction settled it all land in an append-only trail.">
           <div className="panel-flat flex items-center justify-between gap-4 rounded-lg px-4 py-3">
@@ -120,6 +128,19 @@ function Chip({ name, note, muted }: { name: string; note: string; muted?: boole
         <p className="truncate text-sm font-medium" style={{ color: "var(--panel-ink)" }}>{name}</p>
         <p className="panel-muted truncate text-xs">{note}</p>
       </div>
+    </div>
+  );
+}
+
+function Bubble({ text, mine }: { text: string; mine?: boolean }) {
+  return (
+    <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+      <p
+        className="panel-flat max-w-[15rem] rounded-2xl px-3 py-2 text-xs leading-snug"
+        style={{ color: "var(--panel-ink)" }}
+      >
+        {text}
+      </p>
     </div>
   );
 }
