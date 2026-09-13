@@ -135,6 +135,10 @@ func helpText(appURL string) string {
 		"• DM me an invoice PDF to file it",
 		"• `/quorly pending` — open invoices",
 		"• `/quorly team` — the roster and who can approve",
+		"• `/quorly wallet` — your address and what it holds",
+		"• `/quorly treasury` — what the company can pay from",
+		"• `/quorly policy` — the tiers and what each one demands",
+		"• `/quorly whoami` — which seat you hold here",
 		"• Dashboard: " + appURL,
 	}, "\n")
 }

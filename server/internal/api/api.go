@@ -23,6 +23,7 @@ type Server struct {
 	Cfg      *config.Config
 	DB       *store.Store
 	Svc      *service.Service
+	Wallets  *service.Wallets
 	Privy    *privy.Client
 	Queue    *queue.Queue
 	Verifier *auth.Verifier
@@ -53,6 +54,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/members", s.inviteMember)
 	mux.HandleFunc("PATCH /api/members/{id}", s.setMemberRole)
 	mux.HandleFunc("DELETE /api/members/{id}", s.removeMember)
+
+	mux.HandleFunc("GET /api/wallet", s.getWallet)
+	mux.HandleFunc("POST /api/wallet/send", s.sendFromWallet)
 
 	mux.HandleFunc("POST /api/world/context", s.worldContext)
 	mux.HandleFunc("POST /api/attest", s.attest)

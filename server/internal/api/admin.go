@@ -201,6 +201,15 @@ func (s *Server) inviteMember(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.fail(w, err)
 	default:
+		// Give them somewhere to be paid before they ever sign in, so an
+		// invoice filed on their behalf has a destination.
+		if s.Wallets != nil {
+			if funded, err := s.Wallets.Ensure(r.Context(), member); err != nil {
+				s.Log.Warn("wallet provisioning", "err", err, "member", member.ID)
+			} else {
+				member = funded
+			}
+		}
 		writeJSON(w, http.StatusCreated, memberView(member))
 	}
 }

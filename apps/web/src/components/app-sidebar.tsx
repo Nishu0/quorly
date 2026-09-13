@@ -12,6 +12,7 @@ import {
   IconLayoutDashboard,
   IconScale,
   IconUsers,
+  IconWallet,
 } from "@tabler/icons-react";
 
 import {
@@ -38,7 +39,10 @@ const GOVERN = [
   { title: "Team", url: "/dashboard/team", icon: IconUsers },
 ];
 
-const TOOLS = [{ title: "Faucet", url: "/dashboard/faucet", icon: IconDroplet }];
+const TOOLS = [
+  { title: "Wallet", url: "/dashboard/wallet", icon: IconWallet },
+  { title: "Faucet", url: "/dashboard/faucet", icon: IconDroplet },
+];
 
 export function AppSidebar({
   member,

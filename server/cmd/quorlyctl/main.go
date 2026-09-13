@@ -158,7 +158,6 @@ func invoice(ctx context.Context, cfg *config.Config, db *store.Store, amount fl
 
 	desc := "Sprint 14 — contract engineering"
 	number := "INV-" + ids.New("")[1:5]
-	payee := "0x1111111111111111111111111111111111111111"
 	ens := "priya.acmelabs.eth"
 
 	submitter, err := pickSubmitter(ctx, db, orgID)
@@ -169,7 +168,10 @@ func invoice(ctx context.Context, cfg *config.Config, db *store.Store, amount fl
 	inv, decision, err := svc.CreateInvoice(ctx, service.NewInvoice{
 		OrgID: orgID, SubmitterID: submitter,
 		Amount: amount, Description: &desc, Number: &number,
-		PayeeAddress: &payee, PayeeENS: &ens,
+		// No payee: the service falls back to the submitter's own wallet,
+		// which is where a real invoice would be paid. Passing a placeholder
+		// here is how test payouts ended up going to 0x1111…1111.
+		PayeeENS: &ens,
 	})
 	if err != nil {
 		fail(err)

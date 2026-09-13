@@ -402,6 +402,68 @@ func (a *App) handleCommand(w http.ResponseWriter, r *http.Request) {
 		}
 		writeEphemeral(w, strings.Join(lines, "\n"))
 
+	case "wallet":
+		if member.WalletAddress == nil || *member.WalletAddress == "" {
+			writeEphemeral(w, "You don't have a wallet yet. Sign in at "+a.AppURL+
+				" and one is created for you.")
+			return
+		}
+		writeEphemeral(w, strings.Join([]string{
+			"*Your wallet*",
+			"`" + *member.WalletAddress + "`",
+			"Balance and transfers: " + a.AppURL + "/dashboard/wallet",
+		}, "\n"))
+
+	case "treasury":
+		org, err := a.DB.Org(r.Context(), member.OrgID)
+		if err != nil {
+			writeEphemeral(w, "Couldn't read the treasury.")
+			return
+		}
+		if org.TreasuryAddress == nil || *org.TreasuryAddress == "" {
+			writeEphemeral(w, "No treasury is attached to this workspace yet.")
+			return
+		}
+		writeEphemeral(w, strings.Join([]string{
+			"*" + org.Name + " treasury*",
+			"`" + *org.TreasuryAddress + "`",
+			"Payouts are released from here, and only by the key quorum that owns it.",
+		}, "\n"))
+
+	case "policy":
+		tiers, err := a.DB.Policies(r.Context(), member.OrgID)
+		if err != nil {
+			writeEphemeral(w, "Couldn't read the rulebook.")
+			return
+		}
+		var lines []string
+		for _, t := range tiers {
+			if !t.Active {
+				continue
+			}
+			line := fmt.Sprintf("• *%s* — up to %s, %d approval", t.Name, fmtUSD(t.MaxAmount), t.RequiredApprovals)
+			if t.RequiredApprovals != 1 {
+				line += "s"
+			}
+			if t.RequiredAttestation != nil {
+				line += ", live Selfie Check"
+			}
+			lines = append(lines, line)
+		}
+		if len(lines) == 0 {
+			writeEphemeral(w, "No active tiers — nothing can be approved until one exists.")
+			return
+		}
+		writeEphemeral(w, strings.Join(lines, "\n"))
+
+	case "whoami":
+		lines := []string{fmt.Sprintf("*%s* — _%s_", member.Display(), member.Role)}
+		lines = append(lines, member.Email)
+		if member.WalletAddress != nil && *member.WalletAddress != "" {
+			lines = append(lines, "`"+*member.WalletAddress+"`")
+		}
+		writeEphemeral(w, strings.Join(lines, "\n"))
+
 	default:
 		writeEphemeral(w, helpText(a.AppURL))
 	}

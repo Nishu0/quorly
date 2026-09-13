@@ -87,6 +87,18 @@ func (s *Server) authSync(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
+
+	// Someone signing in without a Privy wallet of their own still needs an
+	// address to be paid into. Not fatal if it fails — they are on the roster
+	// either way, and the next sign-in tries again.
+	if s.Wallets != nil {
+		if funded, err := s.Wallets.Ensure(r.Context(), claimed); err != nil {
+			s.Log.Warn("wallet provisioning", "err", err, "member", claimed.ID)
+		} else {
+			claimed = funded
+		}
+	}
+
 	writeJSON(w, http.StatusOK, memberView(claimed))
 }
 

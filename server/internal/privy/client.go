@@ -202,7 +202,7 @@ func (c *Client) SendTransaction(ctx context.Context, p SendParams) (string, err
 		} `json:"data"`
 	}
 	if err := c.call(ctx, http.MethodPost, "/v1/wallets/"+p.WalletID+"/rpc",
-		body, &out, callOpts{sign: true, idempotencyKey: p.IdempotencyKey}); err != nil {
+		body, &out, callOpts{sign: !p.Unsigned, idempotencyKey: p.IdempotencyKey}); err != nil {
 		return "", err
 	}
 	if out.Data.Hash == "" {
@@ -216,6 +216,9 @@ type SendParams struct {
 	CAIP2    string
 	To       string
 	Data     string
+	// Unsigned marks a wallet the app controls outright, with no key quorum to
+	// satisfy. Member wallets are like this; the treasury is not.
+	Unsigned bool
 	// IdempotencyKey stops a retried job from paying twice. It is signed along
 	// with the rest of the request, so it cannot be swapped in transit.
 	IdempotencyKey string

@@ -115,6 +115,7 @@ func run(log *slog.Logger, migrateOnly bool) error {
 		Addr: cfg.Addr,
 		Handler: (&api.Server{
 			Cfg: cfg, DB: db, Svc: svc, Privy: privyClient,
+			Wallets: &service.Wallets{DB: db, Privy: privyClient, Log: log},
 			Queue: q, Verifier: verifier, Signer: signer, Log: log,
 			Slack: slackApp,
 		}).Handler(),

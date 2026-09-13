@@ -152,6 +152,16 @@ func (s *Store) ClaimMemberSeat(ctx context.Context, email, privyUserID string, 
 		RETURNING `+memberCols, email, privyUserID, walletAddress))
 }
 
+// SetMemberWallet records the Privy wallet a member is paid into. Guarded on
+// wallet_id being empty so a member who already has one keeps it — an address
+// that changes under someone is an invoice paid to a stranger.
+func (s *Store) SetMemberWallet(ctx context.Context, memberID, walletID, address string) (domain.Member, error) {
+	return scanMember(s.pool.QueryRow(ctx, `
+		UPDATE members SET wallet_id=$2, wallet_address=$3
+		WHERE id=$1 AND (wallet_id IS NULL OR wallet_id = '')
+		RETURNING `+memberCols, memberID, walletID, address))
+}
+
 func (s *Store) SetMemberRole(ctx context.Context, memberID string, role domain.Role) error {
 	_, err := s.pool.Exec(ctx, `UPDATE members SET role=$2 WHERE id=$1`, memberID, string(role))
 	return err
