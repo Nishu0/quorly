@@ -19,11 +19,12 @@ import (
 	"github.com/Nishu0/quorly/server/internal/ai"
 	"github.com/Nishu0/quorly/server/internal/api"
 	"github.com/Nishu0/quorly/server/internal/auth"
+	"github.com/Nishu0/quorly/server/internal/chat"
 	"github.com/Nishu0/quorly/server/internal/config"
 	"github.com/Nishu0/quorly/server/internal/domain"
-	"github.com/Nishu0/quorly/server/internal/privy"
 	"github.com/Nishu0/quorly/server/internal/money"
 	"github.com/Nishu0/quorly/server/internal/policy"
+	"github.com/Nishu0/quorly/server/internal/privy"
 	"github.com/Nishu0/quorly/server/internal/queue"
 	"github.com/Nishu0/quorly/server/internal/service"
 	"github.com/Nishu0/quorly/server/internal/slackapp"
@@ -95,6 +96,11 @@ func run(log *slog.Logger, migrateOnly bool) error {
 		Explorer:      "https://sepolia.basescan.org",
 		SigningSecret: cfg.Slack.SigningSecret,
 		DevBotToken:   cfg.Slack.BotToken,
+		Assistant: &service.Assistant{
+			DB:     db,
+			Chat:   chat.New(cfg.Chat.APIKey, cfg.Chat.Model, cfg.AppURL),
+			AppURL: cfg.AppURL,
+		},
 	}
 
 	// Mirrors the treasury policy so a rebuilt payee allowlist keeps the cap it
@@ -131,7 +137,7 @@ func run(log *slog.Logger, migrateOnly bool) error {
 		Handler: (&api.Server{
 			Cfg: cfg, DB: db, Svc: svc, Privy: privyClient,
 			Wallets: wallets,
-			Queue: q, Verifier: verifier, Signer: signer, Log: log,
+			Queue:   q, Verifier: verifier, Signer: signer, Log: log,
 			Slack: slackApp,
 		}).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,

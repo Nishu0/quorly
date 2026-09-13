@@ -21,6 +21,7 @@ type Config struct {
 	World WorldConfig
 	Slack SlackConfig
 	Chain ChainConfig
+	Chat  ChatConfig
 }
 
 type PrivyConfig struct {
@@ -48,6 +49,13 @@ type SlackConfig struct {
 	SigningSecret string
 	BotToken      string // single-workspace dev fallback
 	AppToken      string
+}
+
+// ChatConfig drives the Slack assistant. Empty key simply turns it off — the
+// bot still files invoices, it just stops being able to talk about them.
+type ChatConfig struct {
+	APIKey string
+	Model  string
 }
 
 type ChainConfig struct {
@@ -92,6 +100,10 @@ func Load() (*Config, error) {
 			SigningSecret: os.Getenv("SLACK_SIGNING_SECRET"),
 			BotToken:      os.Getenv("SLACK_BOT_TOKEN"),
 			AppToken:      os.Getenv("SLACK_APP_TOKEN"),
+		},
+		Chat: ChatConfig{
+			APIKey: os.Getenv("OPENROUTER_API_KEY"),
+			Model:  envOr("OPENROUTER_MODEL", "z-ai/glm-5.3-flash"),
 		},
 		Chain: ChainConfig{
 			ID:              intOr("CHAIN_ID", 84532),

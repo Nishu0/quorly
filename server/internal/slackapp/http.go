@@ -103,6 +103,8 @@ func (a *App) handleEvents(w http.ResponseWriter, r *http.Request) {
 			User        string `json:"user"`
 			BotID       string `json:"bot_id"`
 			Text        string `json:"text"`
+			TS          string `json:"ts"`
+			ThreadTS    string `json:"thread_ts"`
 			Channel     string `json:"channel"`
 			ChannelType string `json:"channel_type"`
 			Files       []struct {
@@ -117,16 +119,19 @@ func (a *App) handleEvents(w http.ResponseWriter, r *http.Request) {
 		a.Log.Error("parse slack envelope", "err", err)
 		return
 	}
-	if envelope.Event.Type != "message" {
+	if envelope.Event.Type != "message" && envelope.Event.Type != "app_mention" {
 		return
 	}
 
 	msg := incoming{
+		Kind:        envelope.Event.Type,
 		TeamID:      envelope.TeamID,
 		User:        envelope.Event.User,
 		BotID:       envelope.Event.BotID,
 		SubType:     envelope.Event.SubType,
 		Text:        envelope.Event.Text,
+		TS:          envelope.Event.TS,
+		ThreadTS:    envelope.Event.ThreadTS,
 		Channel:     envelope.Event.Channel,
 		ChannelType: envelope.Event.ChannelType,
 	}
@@ -143,19 +148,28 @@ type incomingFile struct {
 }
 
 type incoming struct {
+	Kind        string
 	TeamID      string
 	User        string
 	BotID       string
 	SubType     string
 	Text        string
+	TS          string
+	ThreadTS    string
 	Channel     string
 	ChannelType string
 	Files       []incomingFile
 }
 
 func (a *App) onMessage(ctx context.Context, ev incoming) {
-	// Ignore our own posts, edits, and anything outside a DM.
-	if ev.BotID != "" || ev.SubType != "" || ev.User == "" || ev.ChannelType != "im" {
+	// Ignore our own posts and edits. A mention is welcome anywhere; a plain
+	// message only in a DM, or the bot would answer every passing remark in
+	// every channel it sits in.
+	if ev.BotID != "" || ev.SubType != "" || ev.User == "" {
+		return
+	}
+	mention := ev.Kind == "app_mention"
+	if !mention && ev.ChannelType != "im" {
 		return
 	}
 
@@ -173,8 +187,10 @@ func (a *App) onMessage(ctx context.Context, ev incoming) {
 	}
 
 	if len(ev.Files) == 0 {
-		a.say(ctx, client, ev.Channel,
-			"Upload the invoice PDF or image here and I'll file it, route it, and chase the approver.")
+		// Anything that isn't a document is a question. Falling back to the
+		// old "upload a PDF" line made the bot look deaf to people who were
+		// simply asking where their money was.
+		a.answer(ctx, client, ev, member, mention)
 		return
 	}
 

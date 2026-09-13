@@ -16,11 +16,14 @@ import (
 )
 
 type App struct {
-	DB            *store.Store
-	Svc           *service.Service
-	AI            *ai.Client
-	Log           *slog.Logger
-	AppURL        string
+	DB     *store.Store
+	Svc    *service.Service
+	AI     *ai.Client
+	Log    *slog.Logger
+	AppURL string
+	// Assistant answers questions. Optional: without it the bot still files
+	// invoices, it just stops being able to talk about them.
+	Assistant     *service.Assistant
 	Explorer      string
 	SigningSecret string
 	// DevBotToken is used when a workspace has no stored installation, so a
