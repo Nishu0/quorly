@@ -3,29 +3,8 @@ import { DitherBackground } from "@/components/quorly/dither-background";
 import { FlowDiagram } from "@/components/quorly/flow-diagram";
 import { ProblemModals } from "@/components/quorly/problem-modals";
 import { FounderNote } from "@/components/quorly/founder-note";
+import { Bento } from "@/components/quorly/bento";
 
-const FEATURES = [
-  {
-    n: "A",
-    t: "Approvals where work happens",
-    d: "A contractor DMs an invoice PDF. The bot reads it, routes it against policy, and asks exactly the people who can approve. No portal.",
-  },
-  {
-    n: "B",
-    t: "Friction priced to risk",
-    d: "Under $500 clears in one click. Above it, a live Selfie Check. Above that, two approvers within three minutes of each other.",
-  },
-  {
-    n: "C",
-    t: "Rules the app can't flip",
-    d: "The treasury is owned by an m-of-n key quorum with its spend policy enforced inside a secure enclave — not by a boolean in our database.",
-  },
-  {
-    n: "D",
-    t: "An audit trail worth reading",
-    d: "Who approved, what proved they were live, which transaction settled it. Append-only, and readable by someone who wasn't there.",
-  },
-];
 
 export function Landing() {
   return (
@@ -117,20 +96,6 @@ export function Landing() {
         </section>
 
         {/* Features */}
-        <section className="reveal mt-8 grid gap-4 sm:grid-cols-2" style={{ animationDelay: "240ms" }}>
-          {FEATURES.map((f) => (
-            <article key={f.n} className="panel-flat p-7">
-              <div className="mb-4 flex items-center gap-2.5">
-                <span className="pixel grid size-6 place-items-center rounded-md border border-white/50 bg-white/35 text-[0.625rem] text-[var(--panel-ink)]">
-                  {f.n}
-                </span>
-                <span className="dither-rule flex-1" />
-              </div>
-              <h3 className="display text-xl leading-snug">{f.t}</h3>
-              <p className="panel-muted mt-2.5 text-sm leading-relaxed">{f.d}</p>
-            </article>
-          ))}
-        </section>
 
         {/* The honest caveat */}
         <section className="panel reveal mt-8 overflow-hidden" style={{ animationDelay: "300ms" }}>
@@ -149,6 +114,8 @@ export function Landing() {
             </p>
           </div>
         </section>
+
+        <Bento />
 
         <FounderNote />
       </div>
