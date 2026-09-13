@@ -8,6 +8,7 @@ import (
 	"github.com/Nishu0/quorly/server/internal/domain"
 	"github.com/Nishu0/quorly/server/internal/ids"
 	"github.com/Nishu0/quorly/server/internal/money"
+	"github.com/Nishu0/quorly/server/internal/policy"
 	"github.com/Nishu0/quorly/server/internal/privy"
 	"github.com/Nishu0/quorly/server/internal/queue"
 	"github.com/Nishu0/quorly/server/internal/worker"
@@ -28,6 +29,11 @@ type Payouts struct {
 	// OnPaid announces a settled invoice. Optional, and deliberately
 	// best-effort: a Slack outage must not fail a payout that already landed.
 	OnPaid func(ctx context.Context, inv domain.Invoice)
+
+	// OnFiled tells the approvers a new invoice is waiting. Unlike OnPaid this
+	// one runs through the queue, so a Slack outage retries rather than
+	// silently losing the only prompt anyone gets.
+	OnFiled func(ctx context.Context, inv domain.Invoice, d policy.Decision) error
 }
 
 func (p *Payouts) announce(ctx context.Context, inv domain.Invoice) {
@@ -44,6 +50,7 @@ type payoutPayload struct {
 // Register wires the handlers onto a pool.
 func (p *Payouts) Register(pool *worker.Pool) {
 	pool.Handle(queue.KindPayout, p.handlePayout)
+	pool.Handle(queue.KindSlackNotify, p.handleNotify)
 }
 
 // handlePayout proposes the transfer to Privy.
@@ -121,6 +128,36 @@ func (p *Payouts) handlePayout(ctx context.Context, j queue.Job) error {
 	inv.TxHash = &hash
 	p.announce(ctx, inv)
 	return p.audit(ctx, inv, "invoice.paid", map[string]any{"txHash": hash})
+}
+
+// handleNotify posts the approval card to everyone who can act on it.
+//
+// Through the queue rather than inline, because this is the only prompt most
+// approvers ever see: if Slack is down when the invoice is filed, a retry an
+// hour later is the difference between a late approval and none at all.
+func (p *Payouts) handleNotify(ctx context.Context, j queue.Job) error {
+	if p.OnFiled == nil {
+		return nil
+	}
+	var payload payoutPayload
+	if err := j.Unmarshal(&payload); err != nil {
+		return fmt.Errorf("bad payload: %w", err)
+	}
+
+	inv, err := p.Service.DB.Invoice(ctx, payload.InvoiceID)
+	if err != nil {
+		return err
+	}
+	// Nothing to chase once it has been decided.
+	if inv.Status != domain.StatusPendingApproval {
+		return nil
+	}
+
+	decision, err := p.Service.Route(ctx, inv)
+	if err != nil {
+		return err
+	}
+	return p.OnFiled(ctx, inv, decision)
 }
 
 func (p *Payouts) audit(ctx context.Context, inv domain.Invoice, event string, data any) error {

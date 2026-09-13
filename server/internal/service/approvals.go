@@ -97,8 +97,25 @@ func (s *Service) CreateInvoice(ctx context.Context, in NewInvoice) (domain.Invo
 	inv.PolicyID = &decision.Policy.ID
 	inv.RequiredApprovals = decision.RequiredApprovals
 
+	notify, err := json.Marshal(map[string]string{"invoiceId": inv.ID})
+	if err != nil {
+		return domain.Invoice{}, policy.Decision{}, err
+	}
+
 	err = s.DB.Tx(ctx, func(tx pgx.Tx) error {
 		if err := s.DB.CreateInvoice(ctx, tx, inv); err != nil {
+			return err
+		}
+		// Told to the approvers from here rather than from whichever surface
+		// filed the invoice: it used to be the Slack handler's job, so an
+		// invoice raised any other way reached nobody. Same transaction as the
+		// row, so a notification cannot exist for an invoice that does not.
+		if err := queue.EnqueueTx(ctx, tx, queue.EnqueueParams{
+			Kind:           queue.KindSlackNotify,
+			IdempotencyKey: "notify:" + inv.ID,
+			Payload:        notify,
+			MaxAttempts:    5,
+		}); err != nil {
 			return err
 		}
 		return s.DB.Audit(ctx, tx, ids.New("aud"), inv.OrgID, &in.SubmitterID,

@@ -22,6 +22,7 @@ import (
 	"github.com/Nishu0/quorly/server/internal/config"
 	"github.com/Nishu0/quorly/server/internal/domain"
 	"github.com/Nishu0/quorly/server/internal/privy"
+	"github.com/Nishu0/quorly/server/internal/policy"
 	"github.com/Nishu0/quorly/server/internal/queue"
 	"github.com/Nishu0/quorly/server/internal/service"
 	"github.com/Nishu0/quorly/server/internal/slackapp"
@@ -107,6 +108,11 @@ func run(log *slog.Logger, migrateOnly bool) error {
 			if err := slackApp.NotifyPaid(ctx, inv); err != nil {
 				log.Warn("could not announce payment", "err", err, "invoice", inv.ID)
 			}
+		},
+		// Returns its error, unlike OnPaid: an unsent approval card is the
+		// whole prompt, so the queue should retry rather than shrug.
+		OnFiled: func(ctx context.Context, inv domain.Invoice, d policy.Decision) error {
+			return slackApp.FanOut(ctx, inv, d)
 		},
 	}).Register(pool)
 	go pool.Run(ctx)

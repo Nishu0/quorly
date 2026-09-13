@@ -231,10 +231,6 @@ func (a *App) onMessage(ctx context.Context, ev incoming) {
 	a.say(ctx, client, ev.Channel, fmt.Sprintf(
 		":receipt: Filed *%s %s*.\n%s\nI've pinged %s.",
 		fmtUSD(inv.Amount), inv.Currency, decision.Reason, mentionList(decision)))
-
-	if err := a.FanOut(ctx, inv, decision); err != nil {
-		a.Log.Error("fan out", "err", err)
-	}
 }
 
 /* ------------------------------------------------------------ interactions */
