@@ -2,6 +2,7 @@ import Link from "next/link";
 import { DitherBackground } from "@/components/quorly/dither-background";
 import { FlowDiagram } from "@/components/quorly/flow-diagram";
 import { ProblemModals } from "@/components/quorly/problem-modals";
+import { FounderNote } from "@/components/quorly/founder-note";
 
 const FEATURES = [
   {
@@ -129,6 +130,8 @@ export function Landing() {
             </p>
           </div>
         </section>
+
+        <FounderNote />
       </div>
     </div>
   );
