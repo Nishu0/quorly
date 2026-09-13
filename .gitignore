@@ -13,3 +13,6 @@ contracts/broadcast
 # Never commit the deploy key
 quorly.pem
 *.pem
+
+# deck build output — regenerate with scripts/make_deck.py
+Quorly_Deck.pptx
