@@ -81,8 +81,6 @@ func (s *Server) sendFromWallet(w http.ResponseWriter, r *http.Request) {
 		CAIP2:    money.CAIP2(s.Cfg.Chain.ID),
 		To:       s.Cfg.Chain.SettlementToken,
 		Data:     privy.ERC20TransferData(to, amount),
-		// A member's wallet has no key quorum over it; the treasury does.
-		Unsigned: true,
 	})
 	if err != nil {
 		s.Log.Error("wallet send", "err", err, "member", m.ID)

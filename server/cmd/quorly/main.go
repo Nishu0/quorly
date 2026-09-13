@@ -109,6 +109,7 @@ func run(log *slog.Logger, migrateOnly bool) error {
 	wallets := &service.Wallets{
 		DB: db, Privy: privyClient, Log: log,
 		TokenAddress: cfg.Chain.SettlementToken, MaxPayoutBase: maxPayout,
+		OwnerQuorumID: cfg.Privy.QuorumID,
 	}
 
 	host, _ := os.Hostname()

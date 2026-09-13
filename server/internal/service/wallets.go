@@ -27,6 +27,9 @@ type Wallets struct {
 	// allowlist keeps the other conditions it was created with.
 	TokenAddress  string
 	MaxPayoutBase *big.Int
+	// OwnerQuorumID owns the member wallets. Empty leaves them app-controlled,
+	// which works for spending but blocks key export.
+	OwnerQuorumID string
 }
 
 // Ensure returns the member with a wallet attached, creating one if needed.
@@ -37,6 +40,9 @@ type Wallets struct {
 // first one created rather than leaving an orphan behind.
 func (w *Wallets) Ensure(ctx context.Context, m domain.Member) (domain.Member, error) {
 	if m.WalletAddress != nil && *m.WalletAddress != "" {
+		// Wallets made before ownership was set cannot export. Adopting them
+		// here means nobody has to be told to make a new one.
+		w.adopt(ctx, m)
 		return m, nil
 	}
 	if w.Privy == nil {
@@ -47,6 +53,10 @@ func (w *Wallets) Ensure(ctx context.Context, m domain.Member) (domain.Member, e
 		ChainType:   "ethereum",
 		DisplayName: m.Display(),
 		ExternalID:  "member_" + m.ID,
+		// Owned, because Privy will not export a private key from a wallet
+		// nobody owns, and letting someone leave with their own key is the
+		// point of giving them a wallet rather than an IOU.
+		OwnerID: w.OwnerQuorumID,
 	})
 	if err != nil {
 		return m, fmt.Errorf("create wallet for %s: %w", m.ID, err)
@@ -72,6 +82,23 @@ func (w *Wallets) Ensure(ctx context.Context, m domain.Member) (domain.Member, e
 		w.Log.Warn("payee allowlist", "err", err, "org", m.OrgID)
 	}
 	return updated, nil
+}
+
+// adopt gives an existing wallet an owner if it has none. Best-effort and
+// quiet: the wallet still works for everything except export without it.
+func (w *Wallets) adopt(ctx context.Context, m domain.Member) {
+	if w.Privy == nil || w.OwnerQuorumID == "" || m.WalletID == nil || *m.WalletID == "" {
+		return
+	}
+	current, err := w.Privy.Wallet(ctx, *m.WalletID)
+	if err != nil || current.OwnerID != "" {
+		return
+	}
+	if _, err := w.Privy.SetWalletOwner(ctx, *m.WalletID, w.OwnerQuorumID); err != nil {
+		w.Log.Warn("wallet adoption", "err", err, "member", m.ID)
+		return
+	}
+	w.Log.Info("wallet adopted by quorum", "member", m.ID, "wallet", *m.WalletID)
 }
 
 // SyncPayeeAllowlist rebuilds the treasury policy from the current roster.

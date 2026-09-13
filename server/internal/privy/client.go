@@ -175,6 +175,16 @@ func (c *Client) Wallet(ctx context.Context, walletID string) (Wallet, error) {
 	return out, err
 }
 
+// SetWalletOwner hands a wallet to a key quorum. Privy refuses to export a
+// private key from a wallet nobody owns — an ownerless wallet has no authority
+// to check the request against, so there is nothing to authorise the export.
+func (c *Client) SetWalletOwner(ctx context.Context, walletID, ownerID string) (Wallet, error) {
+	var out Wallet
+	err := c.call(ctx, http.MethodPatch, "/v1/wallets/"+walletID,
+		map[string]any{"owner_id": ownerID}, &out, callOpts{sign: true})
+	return out, err
+}
+
 func (c *Client) UpdateWalletPolicies(ctx context.Context, walletID string, policyIDs []string) (Wallet, error) {
 	var out Wallet
 	err := c.call(ctx, http.MethodPatch, "/v1/wallets/"+walletID,
@@ -257,7 +267,7 @@ func (c *Client) ExportWallet(ctx context.Context, walletID, recipientPublicKey 
 		map[string]any{
 			"encryption_type":      "HPKE",
 			"recipient_public_key": recipientPublicKey,
-		}, &out, callOpts{})
+		}, &out, callOpts{sign: true})
 	return out, err
 }
 
