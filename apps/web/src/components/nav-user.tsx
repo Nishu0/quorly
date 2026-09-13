@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import {
   IconCheck,
@@ -32,11 +33,25 @@ const EXPLORER = "https://sepolia.basescan.org";
 
 export function NavUser({ member }: { member: Member }) {
   const { logout } = usePrivy();
+  const router = useRouter();
   const { isMobile } = useSidebar();
   const [copied, setCopied] = useState(false);
 
   const label = member.name ?? member.email;
   const wallet = member.walletAddress;
+
+  // Privy clears the session in the browser, but every dashboard page is
+  // rendered on the server behind an /api/me check — without sending the
+  // viewer somewhere else they sit on a signed-out page that still looks
+  // signed in until they happen to reload.
+  async function signOut() {
+    try {
+      await logout();
+    } finally {
+      router.replace("/login");
+      router.refresh();
+    }
+  }
 
   async function copyWallet() {
     if (!wallet) return;
@@ -133,15 +148,14 @@ export function NavUser({ member }: { member: Member }) {
                 </>
               ) : (
                 <p className="px-1.5 py-1 text-xs text-muted-foreground">
-                  No wallet yet — Privy creates one on first sign-in with an
-                  embedded wallet.
+                  No wallet yet — sign out and back in and one is created for you.
                 </p>
               )}
             </DropdownMenuGroup>
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem variant="destructive" onClick={() => logout()}>
+            <DropdownMenuItem variant="destructive" onClick={signOut}>
               <IconLogout />
               Sign out
             </DropdownMenuItem>

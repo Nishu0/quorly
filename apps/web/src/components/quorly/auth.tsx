@@ -36,6 +36,18 @@ export function useQuorlySession() {
 
 export function SignInButton({ full }: { full?: boolean }) {
   const { ready, authenticated, user, login, logout, sync } = useQuorlySession();
+  const router = useRouter();
+
+  // Same reason as the sidebar menu: signing out in the browser leaves every
+  // server-rendered page still showing the previous session.
+  async function signOut() {
+    try {
+      await logout();
+    } finally {
+      router.replace("/login");
+      router.refresh();
+    }
+  }
 
   if (!ready) {
     return <span className="text-sm text-ink-faint">…</span>;
@@ -60,7 +72,7 @@ export function SignInButton({ full }: { full?: boolean }) {
     return (
       <div className="flex items-center gap-3">
         <span className="text-xs text-oxblood">{sync.message}</span>
-        <button onClick={logout} className="text-xs text-ink-soft underline underline-offset-2">
+        <button onClick={signOut} className="text-xs text-ink-soft underline underline-offset-2">
           Sign out
         </button>
       </div>
@@ -77,7 +89,7 @@ export function SignInButton({ full }: { full?: boolean }) {
     <div className="flex items-center gap-3">
       <span className="hidden max-w-[14rem] truncate text-sm text-ink-soft sm:inline">{label}</span>
       <button
-        onClick={logout}
+        onClick={signOut}
         className="text-sm text-ink-faint transition-colors hover:text-foreground"
       >
         Sign out

@@ -51,6 +51,16 @@ func (s *Server) authSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if m, err := s.DB.MemberByPrivyID(r.Context(), sub); err == nil {
+		// Returning here without provisioning is how someone who claimed their
+		// seat before wallets existed stayed permanently without one: they are
+		// already linked, so the claim path below never runs for them again.
+		if s.Wallets != nil {
+			if funded, err := s.Wallets.Ensure(r.Context(), m); err != nil {
+				s.Log.Warn("wallet provisioning", "err", err, "member", m.ID)
+			} else {
+				m = funded
+			}
+		}
 		writeJSON(w, http.StatusOK, memberView(m))
 		return
 	}
