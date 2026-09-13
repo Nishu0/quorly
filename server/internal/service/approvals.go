@@ -113,7 +113,7 @@ func (s *Service) CreateInvoice(ctx context.Context, in NewInvoice) (domain.Invo
 		if err := queue.EnqueueTx(ctx, tx, queue.EnqueueParams{
 			Kind:           queue.KindSlackNotify,
 			IdempotencyKey: "notify:" + inv.ID,
-			Payload:        notify,
+			Payload:        json.RawMessage(notify),
 			MaxAttempts:    5,
 		}); err != nil {
 			return err
