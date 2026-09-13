@@ -39,18 +39,37 @@ export function Landing() {
             <span className="panel-dot" />
             <span className="panel-dot" />
             <span className="panel-dot" />
-            <span className="ml-1">QUORLY.EXE — TREASURY APPROVALS</span>
+            <span className="ml-1">QUORLY.EXE — GET PAID, PAY OUT</span>
           </div>
 
           <div className="px-6 py-16 text-center sm:px-12">
             <h1 className="display text-[clamp(2.5rem,7vw,4.5rem)] leading-[1.02]">
-              Money moves when a<br />
-              <em className="italic">live human</em> says so.
+              The easiest way to pay,
+              <br />
+              and to <em className="italic">get paid</em>.
             </h1>
-            <p className="panel-muted mx-auto mt-7 max-w-lg text-[0.9375rem] leading-relaxed">
-              Slack-native invoice approvals. Above a threshold the approver passes a live World ID
-              Selfie Check, and the payout leaves a treasury wallet governed by a key quorum.
+            <p className="panel-muted mx-auto mt-7 max-w-xl text-[0.9375rem] leading-relaxed">
+              Pay contractors anywhere in the world without a wire, a week, or a chase. Bill
+              clients and see the money land the moment it clears approval. Both sides live in
+              Slack, and above a threshold the person approving shows their face.
             </p>
+
+            {/* Named plainly, because a page that sells to one side leaves the
+                other wondering whose tool this is. */}
+            <div className="panel-muted mx-auto mt-7 flex max-w-md flex-col gap-2 text-left text-sm sm:flex-row sm:gap-6">
+              <p className="flex-1">
+                <span className="font-medium" style={{ color: "var(--panel-ink)" }}>
+                  Paying?
+                </span>{" "}
+                Approvals that route themselves, and a treasury no one person can open.
+              </p>
+              <p className="flex-1">
+                <span className="font-medium" style={{ color: "var(--panel-ink)" }}>
+                  Getting paid?
+                </span>{" "}
+                Send the invoice, watch it clear, hold it in a wallet that&apos;s yours.
+              </p>
+            </div>
 
             <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <a
