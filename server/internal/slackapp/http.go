@@ -165,7 +165,14 @@ func (a *App) onMessage(ctx context.Context, ev incoming) {
 	// Ignore our own posts and edits. A mention is welcome anywhere; a plain
 	// message only in a DM, or the bot would answer every passing remark in
 	// every channel it sits in.
-	if ev.BotID != "" || ev.SubType != "" || ev.User == "" {
+	//
+	// file_share is the one subtype we want: Slack sends an uploaded PDF as a
+	// message with that subtype, so rejecting every subtype silently dropped
+	// the entire invoice-by-DM path — the product's front door.
+	if ev.BotID != "" || ev.User == "" {
+		return
+	}
+	if ev.SubType != "" && ev.SubType != "file_share" {
 		return
 	}
 	mention := ev.Kind == "app_mention"
