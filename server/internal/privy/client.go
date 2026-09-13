@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"strings"
 	"time"
@@ -73,13 +74,17 @@ func (c *Client) call(ctx context.Context, method, path string, body any, out an
 	}
 
 	if opts.sign && len(c.AuthKeys) > 0 {
+		signedHeaders := map[string]any{}
+		if opts.idempotencyKey != "" {
+			signedHeaders["privy-idempotency-key"] = opts.idempotencyKey
+		}
 		sigs := make([]string, 0, len(c.AuthKeys))
 		for _, key := range c.AuthKeys {
 			signBody := body
 			if signBody == nil {
 				signBody = map[string]any{}
 			}
-			sig, err := AuthorizationSignature(method, url, signBody, c.AppID, key)
+			sig, err := AuthorizationSignature(method, url, signBody, c.AppID, key, signedHeaders)
 			if err != nil {
 				return fmt.Errorf("sign request: %w", err)
 			}
@@ -177,165 +182,53 @@ func (c *Client) UpdateWalletPolicies(ctx context.Context, walletID string, poli
 	return out, err
 }
 
-/* ------------------------------------------------------------------ intents */
+/* ------------------------------------------------------------------ payouts */
 
-type Intent struct {
-	// intent_id, not id — an intent is not addressed the way the wallet and
-	// action objects around it are.
-	ID     string `json:"intent_id"`
-	Status string `json:"status"`
-	// RequestDetails is the call the intent will make once authorised. Privy
-	// echoes it back verbatim, which is what makes it safe to sign: the
-	// signature has to cover exactly the bytes Privy holds, not our
-	// reconstruction of them.
-	RequestDetails struct {
-		Method string          `json:"method"`
-		URL    string          `json:"url"`
-		Body   json.RawMessage `json:"body"`
-	} `json:"request_details"`
-	AuthorizationDetails []struct {
-		Threshold int    `json:"threshold"`
-		DisplayName string `json:"display_name"`
-		Members   []struct {
-			Type      string `json:"type"`
-			PublicKey string `json:"public_key"`
-			SignedAt  *int64 `json:"signed_at"`
-		} `json:"members"`
-	} `json:"authorization_details"`
-	// Only present once the intent reaches executed or failed.
-	ActionResult struct {
-		StatusCode   int `json:"status_code"`
-		ResponseBody struct {
-			Status string `json:"status"`
-			Steps  []struct {
-				Type            string `json:"type"`
-				Status          string `json:"status"`
-				TransactionHash string `json:"transaction_hash"`
-			} `json:"steps"`
-		} `json:"response_body"`
-	} `json:"action_result"`
-}
-
-// TxHash returns the hash of the first step that carries one. A transfer is a
-// single evm_transaction today, but the field is a list because Privy may
-// route one through several.
-func (i Intent) TxHash() string {
-	for _, st := range i.ActionResult.ResponseBody.Steps {
-		if st.TransactionHash != "" {
-			return st.TransactionHash
-		}
-	}
-	return ""
-}
-
-type TransferParams struct {
-	WalletID string
-	To       string
-	// Amount is a human-decimal string ("2400.0"), not base units: Privy reads
-	// the token's decimals off the contract and scales it itself. Sending base
-	// units here asks for a transfer 10^decimals too large.
-	Amount       string
-	AssetAddress string
-	Chain        string
-	ReferenceID  string
-}
-
-// CreateTransferIntent proposes a payout. Nothing moves until the quorum's
-// signers authorise it — the Slack approval thread is a UI over this object.
-func (c *Client) CreateTransferIntent(ctx context.Context, p TransferParams) (Intent, error) {
+func (c *Client) SendTransaction(ctx context.Context, p SendParams) (string, error) {
 	body := map[string]any{
-		"source": map[string]any{
-			// CustomTokenTransferSource: an arbitrary ERC-20 is named by its
-			// contract, where a first-class asset would use "asset" instead.
-			"asset_address": p.AssetAddress,
-			"chain":         p.Chain,
-		},
-		"destination": map[string]any{"address": p.To},
-		"amount":      p.Amount,
-	}
-	if p.ReferenceID != "" {
-		body["reference_id"] = p.ReferenceID
+		"caip2":  p.CAIP2,
+		"method": "eth_sendTransaction",
+		"params": map[string]any{"transaction": map[string]any{
+			"to":    p.To,
+			"value": "0x0",
+			"data":  p.Data,
+		}},
 	}
 
-	var out Intent
-	if err := c.call(ctx, http.MethodPost, "/v1/intents/wallets/"+p.WalletID+"/transfer",
-		body, &out, callOpts{sign: true, idempotencyKey: p.ReferenceID}); err != nil {
-		return out, err
+	var out struct {
+		Data struct {
+			Hash          string `json:"hash"`
+			TransactionID string `json:"transaction_id"`
+		} `json:"data"`
 	}
-	// A 200 whose body we could not read leaves nothing to watch: the payout
-	// job would report success while the intent went unpolled forever. Treat
-	// it as the failure it is, so the queue retries and says why.
-	if out.ID == "" {
-		return out, fmt.Errorf("privy accepted the transfer but returned no intent_id "+
-			"(wallet %s) — the response shape has probably moved", p.WalletID)
+	if err := c.call(ctx, http.MethodPost, "/v1/wallets/"+p.WalletID+"/rpc",
+		body, &out, callOpts{sign: true, idempotencyKey: p.IdempotencyKey}); err != nil {
+		return "", err
 	}
-	return out, nil
+	if out.Data.Hash == "" {
+		return "", fmt.Errorf("privy broadcast from %s but returned no hash", p.WalletID)
+	}
+	return out.Data.Hash, nil
 }
 
-// NeedsAuthorization reports the quorum threshold and how many members have
-// already signed. An intent sits at pending until the two meet.
-func (i Intent) NeedsAuthorization() (signed, threshold int) {
-	for _, a := range i.AuthorizationDetails {
-		threshold += a.Threshold
-		for _, m := range a.Members {
-			if m.SignedAt != nil {
-				signed++
-			}
-		}
-	}
-	return signed, threshold
+type SendParams struct {
+	WalletID string
+	CAIP2    string
+	To       string
+	Data     string
+	// IdempotencyKey stops a retried job from paying twice. It is signed along
+	// with the rest of the request, so it cannot be swapped in transit.
+	IdempotencyKey string
 }
 
-// AuthorizeIntent signs the intent's underlying request with each quorum key
-// and submits the signatures one per call, which is the shape the endpoint
-// takes — a threshold above one is several signers each authorising in turn.
-//
-// The signatures on the creation request authenticate that call alone; they do
-// not carry over into approvals of the action it proposes. Without this the
-// intent stays pending until it expires.
-func (c *Client) AuthorizeIntent(ctx context.Context, in Intent) error {
-	signed, threshold := in.NeedsAuthorization()
-	if threshold == 0 || signed >= threshold {
-		return nil
-	}
-
-	var body any
-	if len(in.RequestDetails.Body) > 0 {
-		if err := json.Unmarshal(in.RequestDetails.Body, &body); err != nil {
-			return fmt.Errorf("intent request body: %w", err)
-		}
-	} else {
-		body = map[string]any{}
-	}
-
-	for _, key := range c.AuthKeys {
-		if signed >= threshold {
-			break
-		}
-		sig, err := AuthorizationSignature(
-			in.RequestDetails.Method, in.RequestDetails.URL, body, c.AppID, key)
-		if err != nil {
-			return fmt.Errorf("sign intent: %w", err)
-		}
-		payload := map[string]any{
-			"signature": sig,
-			"timestamp": time.Now().UnixMilli(),
-		}
-		// Deliberately unsigned: the authorisation *is* the payload, and
-		// re-submitting one signer is a no-op rather than a second approval.
-		if err := c.call(ctx, http.MethodPost, "/v1/intents/"+in.ID+"/authorize",
-			payload, nil, callOpts{}); err != nil {
-			return fmt.Errorf("authorize intent %s: %w", in.ID, err)
-		}
-		signed++
-	}
-	return nil
-}
-
-func (c *Client) Intent(ctx context.Context, intentID string) (Intent, error) {
-	var out Intent
-	err := c.call(ctx, http.MethodGet, "/v1/intents/"+intentID, nil, &out, callOpts{})
-	return out, err
+// ERC20TransferData builds calldata for transfer(address,uint256). The amount
+// is in the token's base units, which is what the contract expects — unlike
+// Privy's transfer intents, nothing here rescales it for us.
+func ERC20TransferData(to string, amount *big.Int) string {
+	addr := strings.TrimPrefix(strings.ToLower(to), "0x")
+	return "0xa9059cbb" +
+		fmt.Sprintf("%064s", addr) +
+		fmt.Sprintf("%064s", amount.Text(16))
 }
 
 /* -------------------------------------------------------------------- users */

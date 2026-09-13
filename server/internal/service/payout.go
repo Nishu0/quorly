@@ -2,14 +2,12 @@ package service
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/Nishu0/quorly/server/internal/domain"
 	"github.com/Nishu0/quorly/server/internal/ids"
+	"github.com/Nishu0/quorly/server/internal/money"
 	"github.com/Nishu0/quorly/server/internal/privy"
 	"github.com/Nishu0/quorly/server/internal/queue"
 	"github.com/Nishu0/quorly/server/internal/worker"
@@ -46,7 +44,6 @@ type payoutPayload struct {
 // Register wires the handlers onto a pool.
 func (p *Payouts) Register(pool *worker.Pool) {
 	pool.Handle(queue.KindPayout, p.handlePayout)
-	pool.Handle(queue.KindSettleWatch, p.handleSettleWatch)
 }
 
 // handlePayout proposes the transfer to Privy.
@@ -99,106 +96,31 @@ func (p *Payouts) handlePayout(ctx context.Context, j queue.Job) error {
 		return p.audit(ctx, inv, "invoice.paid", map[string]any{"demo": true, "txHash": hash})
 	}
 
-	intent, err := p.Privy.CreateTransferIntent(ctx, privy.TransferParams{
-		WalletID: *org.TreasuryWalletID,
-		To:       *inv.PayeeAddress,
-		// Privy scales by the token's own decimals, so this is the human
-		// amount — base units here would overpay by 10^decimals.
-		Amount:       fmt.Sprintf("%.6f", inv.Amount),
-		AssetAddress: p.AssetAddress,
-		Chain:        p.PrivyChain,
-		// Same key as the job, so a retried job reuses the intent rather than
-		// proposing a second transfer.
-		ReferenceID: "payout:" + inv.ID,
+	base, err := money.ToBaseUnits(fmt.Sprintf("%.6f", inv.Amount))
+	if err != nil {
+		return err
+	}
+
+	// The idempotency key is the invoice, so a retried job cannot pay twice —
+	// it is signed with the request, so it also cannot be stripped in transit.
+	hash, err := p.Privy.SendTransaction(ctx, privy.SendParams{
+		WalletID:       *org.TreasuryWalletID,
+		CAIP2:          money.CAIP2(p.ChainID),
+		To:             p.AssetAddress,
+		Data:           privy.ERC20TransferData(*inv.PayeeAddress, base),
+		IdempotencyKey: "payout:" + inv.ID,
 	})
 	if err != nil {
-		return fmt.Errorf("create transfer intent: %w", err)
+		return fmt.Errorf("send payout: %w", err)
 	}
 
-	if err := p.Service.DB.SetInvoiceIntent(ctx, inv.ID, intent.ID); err != nil {
+	if err := p.Service.DB.MarkInvoicePaid(ctx, inv.ID, hash); err != nil {
 		return err
 	}
-	if err := p.audit(ctx, inv, "payout.intent_created", map[string]any{
-		"intentId": intent.ID, "status": intent.Status,
-	}); err != nil {
-		return err
-	}
-
-	// Hand off to the watcher rather than blocking this worker on settlement.
-	watch, _ := json.Marshal(payoutPayload{InvoiceID: inv.ID})
-	err = p.Service.Queue.Enqueue(ctx, queue.EnqueueParams{
-		Kind:           queue.KindSettleWatch,
-		IdempotencyKey: "settle:" + inv.ID,
-		Payload:        json.RawMessage(watch),
-		// Generous: a quorum signature can take as long as a human takes.
-		MaxAttempts: 120,
-		RunAt:       time.Now().Add(10 * time.Second),
-	})
-	if err != nil && !errors.Is(err, queue.ErrDuplicate) {
-		return err
-	}
-	return nil
-}
-
-// handleSettleWatch polls the intent until it lands onchain.
-//
-// An intent still collecting signatures is not a failure — it returns
-// RetryLater so the attempt isn't consumed. Otherwise a manager who takes an
-// hour would dead-letter a perfectly good payout.
-func (p *Payouts) handleSettleWatch(ctx context.Context, j queue.Job) error {
-	var payload payoutPayload
-	if err := j.Unmarshal(&payload); err != nil {
-		return fmt.Errorf("bad payload: %w", err)
-	}
-
-	inv, err := p.Service.DB.Invoice(ctx, payload.InvoiceID)
-	if err != nil {
-		return err
-	}
-	if inv.Status == domain.StatusPaid {
-		return nil
-	}
-	if inv.PrivyIntentID == nil {
-		return fmt.Errorf("invoice %s has no intent to watch", inv.ID)
-	}
-
-	intent, err := p.Privy.Intent(ctx, *inv.PrivyIntentID)
-	if err != nil {
-		return err
-	}
-
-	// Creating an intent does not approve it. Sign it here rather than at
-	// creation so a restart, or a quorum that changed under us, still gets the
-	// signatures in — Privy executes on its own once the threshold is met.
-	if signed, threshold := intent.NeedsAuthorization(); signed < threshold {
-		if err := p.Privy.AuthorizeIntent(ctx, intent); err != nil {
-			return err
-		}
-		p.Log.Info("intent authorized", "invoice", inv.ID, "intent", intent.ID,
-			"threshold", threshold)
-		return worker.RetryLater{In: 5 * time.Second}
-	}
-
-	if hash := intent.TxHash(); hash != "" {
-		if err := p.Service.DB.MarkInvoicePaid(ctx, inv.ID, hash); err != nil {
-			return err
-		}
-		p.Log.Info("invoice settled", "invoice", inv.ID, "tx", hash)
-		inv.TxHash = &hash
-		p.announce(ctx, inv)
-		return p.audit(ctx, inv, "invoice.paid", map[string]any{"txHash": hash})
-	}
-
-	if intent.Status == "failed" || intent.Status == "expired" {
-		if err := p.Service.DB.Tx(ctx, func(tx pgx.Tx) error {
-			return p.Service.DB.SetInvoiceStatus(ctx, tx, inv.ID, domain.StatusFailed)
-		}); err != nil {
-			return err
-		}
-		return fmt.Errorf("intent %s %s", intent.ID, intent.Status)
-	}
-
-	return worker.RetryLater{In: 15 * time.Second}
+	p.Log.Info("invoice settled", "invoice", inv.ID, "tx", hash)
+	inv.TxHash = &hash
+	p.announce(ctx, inv)
+	return p.audit(ctx, inv, "invoice.paid", map[string]any{"txHash": hash})
 }
 
 func (p *Payouts) audit(ctx context.Context, inv domain.Invoice, event string, data any) error {

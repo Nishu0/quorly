@@ -16,10 +16,20 @@ import (
 // serialisation of the request before it will act on an owned wallet. Without
 // it, Privy holds the wallet but cannot move funds — and neither can anyone who
 // has stolen only the app secret.
-func AuthorizationSignature(method, url string, body any, appID, privateKeyB64 string) (string, error) {
+//
+// headers carries every privy-* header the request will actually send. They
+// are part of the signed payload, so one sent but not signed — an idempotency
+// key, say — makes the signature verify against a different request than the
+// one that arrives, and Privy rejects it as though the key were wrong.
+func AuthorizationSignature(method, url string, body any, appID, privateKeyB64 string, headers map[string]any) (string, error) {
 	key, err := parseKey(privateKeyB64)
 	if err != nil {
 		return "", err
+	}
+
+	signedHeaders := map[string]any{"privy-app-id": appID}
+	for k, v := range headers {
+		signedHeaders[k] = v
 	}
 
 	payload := map[string]any{
@@ -27,7 +37,7 @@ func AuthorizationSignature(method, url string, body any, appID, privateKeyB64 s
 		"method":  strings.ToUpper(method),
 		"url":     url,
 		"body":    body,
-		"headers": map[string]any{"privy-app-id": appID},
+		"headers": signedHeaders,
 	}
 
 	canonical, err := CanonicalJSON(payload)

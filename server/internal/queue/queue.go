@@ -26,7 +26,6 @@ type Kind string
 
 const (
 	KindPayout      Kind = "payout"       // create the Privy transfer intent
-	KindSettleWatch Kind = "settle_watch" // poll the intent until it lands onchain
 	KindSlackNotify Kind = "slack_notify" // tell people what happened
 )
 
