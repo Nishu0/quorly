@@ -99,7 +99,8 @@ func run(log *slog.Logger, migrateOnly bool) error {
 	pool := worker.NewPool(q, log, host+"-"+time.Now().Format("150405"))
 	(&service.Payouts{
 		Service: svc, Privy: privyClient, Log: log,
-		ChainID: cfg.Chain.ID, Asset: "qusd", Demo: cfg.Demo(),
+		ChainID: cfg.Chain.ID, AssetAddress: cfg.Chain.SettlementToken,
+		PrivyChain: cfg.Chain.PrivyChain, Demo: cfg.Demo(),
 		// Telling people is part of settling, but a Slack outage must not fail
 		// a payout that already landed onchain.
 		OnPaid: func(ctx context.Context, inv domain.Invoice) {

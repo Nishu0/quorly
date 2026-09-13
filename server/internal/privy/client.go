@@ -200,30 +200,37 @@ func (i Intent) TxHash() string {
 }
 
 type TransferParams struct {
-	WalletID   string
-	To         string
-	Amount     string // base units
-	Asset      string
-	CAIP2      string
-	ExternalID string
+	WalletID string
+	To       string
+	// Amount is a human-decimal string ("2400.0"), not base units: Privy reads
+	// the token's decimals off the contract and scales it itself. Sending base
+	// units here asks for a transfer 10^decimals too large.
+	Amount       string
+	AssetAddress string
+	Chain        string
+	ReferenceID  string
 }
 
 // CreateTransferIntent proposes a payout. Nothing moves until the quorum's
 // signers authorise it — the Slack approval thread is a UI over this object.
 func (c *Client) CreateTransferIntent(ctx context.Context, p TransferParams) (Intent, error) {
 	body := map[string]any{
-		"caip2":     p.CAIP2,
-		"asset":     p.Asset,
-		"amount":    p.Amount,
-		"recipient": p.To,
+		"source": map[string]any{
+			// CustomTokenTransferSource: an arbitrary ERC-20 is named by its
+			// contract, where a first-class asset would use "asset" instead.
+			"asset_address": p.AssetAddress,
+			"chain":         p.Chain,
+		},
+		"destination": map[string]any{"address": p.To},
+		"amount":      p.Amount,
 	}
-	if p.ExternalID != "" {
-		body["external_id"] = p.ExternalID
+	if p.ReferenceID != "" {
+		body["reference_id"] = p.ReferenceID
 	}
 
 	var out Intent
 	err := c.call(ctx, http.MethodPost, "/v1/intents/wallets/"+p.WalletID+"/transfer",
-		body, &out, callOpts{sign: true, idempotencyKey: p.ExternalID})
+		body, &out, callOpts{sign: true, idempotencyKey: p.ReferenceID})
 	return out, err
 }
 

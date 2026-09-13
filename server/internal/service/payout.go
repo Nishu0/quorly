@@ -10,7 +10,6 @@ import (
 
 	"github.com/Nishu0/quorly/server/internal/domain"
 	"github.com/Nishu0/quorly/server/internal/ids"
-	"github.com/Nishu0/quorly/server/internal/money"
 	"github.com/Nishu0/quorly/server/internal/privy"
 	"github.com/Nishu0/quorly/server/internal/queue"
 	"github.com/Nishu0/quorly/server/internal/worker"
@@ -23,8 +22,9 @@ type Payouts struct {
 	Privy   *privy.Client
 	Log     *slog.Logger
 
-	ChainID int
-	Asset   string
+	ChainID      int
+	AssetAddress string
+	PrivyChain   string
 	Demo    bool
 
 	// OnPaid announces a settled invoice. Optional, and deliberately
@@ -99,20 +99,17 @@ func (p *Payouts) handlePayout(ctx context.Context, j queue.Job) error {
 		return p.audit(ctx, inv, "invoice.paid", map[string]any{"demo": true, "txHash": hash})
 	}
 
-	base, err := money.ToBaseUnits(fmt.Sprintf("%.6f", inv.Amount))
-	if err != nil {
-		return err
-	}
-
 	intent, err := p.Privy.CreateTransferIntent(ctx, privy.TransferParams{
 		WalletID: *org.TreasuryWalletID,
 		To:       *inv.PayeeAddress,
-		Amount:   base.String(),
-		Asset:    p.Asset,
-		CAIP2:    money.CAIP2(p.ChainID),
+		// Privy scales by the token's own decimals, so this is the human
+		// amount — base units here would overpay by 10^decimals.
+		Amount:       fmt.Sprintf("%.6f", inv.Amount),
+		AssetAddress: p.AssetAddress,
+		Chain:        p.PrivyChain,
 		// Same key as the job, so a retried job reuses the intent rather than
 		// proposing a second transfer.
-		ExternalID: "payout:" + inv.ID,
+		ReferenceID: "payout:" + inv.ID,
 	})
 	if err != nil {
 		return fmt.Errorf("create transfer intent: %w", err)

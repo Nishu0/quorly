@@ -54,6 +54,10 @@ type ChainConfig struct {
 	ID              int
 	RPCURL          string
 	SettlementToken string
+	// PrivyChain is how Privy names this chain in a transfer intent, which is
+	// its own vocabulary rather than the CAIP-2 id used elsewhere. Configurable
+	// because the accepted spelling is provider-specific.
+	PrivyChain string
 }
 
 // Load reads .env from the nearest ancestor directory that has one, then
@@ -93,6 +97,7 @@ func Load() (*Config, error) {
 			ID:              intOr("CHAIN_ID", 84532),
 			RPCURL:          envOr("RPC_URL", "https://sepolia.base.org"),
 			SettlementToken: os.Getenv("USDC_ADDRESS"),
+			PrivyChain:      envOr("PRIVY_CHAIN", "base-sepolia"),
 		},
 	}
 
