@@ -84,6 +84,16 @@ func TreasuryRules(p TreasuryRulesParams) []PolicyRule {
 	}}
 }
 
+// SetPolicyRules replaces a policy's rules wholesale.
+//
+// Privy has no way to amend one condition, so the caller rebuilds the rule and
+// sends it entire. That is the safer shape anyway: a partial update that half
+// applied would leave the treasury governed by something nobody wrote.
+func (c *Client) SetPolicyRules(ctx context.Context, policyID string, rules []PolicyRule) error {
+	return c.call(ctx, http.MethodPatch, "/v1/policies/"+policyID,
+		map[string]any{"rules": rules}, nil, callOpts{sign: true})
+}
+
 func (c *Client) CreatePolicy(ctx context.Context, name, chainType string, rules []PolicyRule) (string, error) {
 	if len(name) > 50 {
 		name = name[:50]

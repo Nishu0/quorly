@@ -22,6 +22,7 @@ import (
 	"github.com/Nishu0/quorly/server/internal/config"
 	"github.com/Nishu0/quorly/server/internal/domain"
 	"github.com/Nishu0/quorly/server/internal/privy"
+	"github.com/Nishu0/quorly/server/internal/money"
 	"github.com/Nishu0/quorly/server/internal/policy"
 	"github.com/Nishu0/quorly/server/internal/queue"
 	"github.com/Nishu0/quorly/server/internal/service"
@@ -96,6 +97,14 @@ func run(log *slog.Logger, migrateOnly bool) error {
 		DevBotToken:   cfg.Slack.BotToken,
 	}
 
+	// Mirrors the treasury policy so a rebuilt payee allowlist keeps the cap it
+	// was created with.
+	maxPayout, _ := money.ToBaseUnits("25000")
+	wallets := &service.Wallets{
+		DB: db, Privy: privyClient, Log: log,
+		TokenAddress: cfg.Chain.SettlementToken, MaxPayoutBase: maxPayout,
+	}
+
 	host, _ := os.Hostname()
 	pool := worker.NewPool(q, log, host+"-"+time.Now().Format("150405"))
 	(&service.Payouts{
@@ -121,7 +130,7 @@ func run(log *slog.Logger, migrateOnly bool) error {
 		Addr: cfg.Addr,
 		Handler: (&api.Server{
 			Cfg: cfg, DB: db, Svc: svc, Privy: privyClient,
-			Wallets: &service.Wallets{DB: db, Privy: privyClient, Log: log},
+			Wallets: wallets,
 			Queue: q, Verifier: verifier, Signer: signer, Log: log,
 			Slack: slackApp,
 		}).Handler(),
